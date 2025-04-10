@@ -1,0 +1,53 @@
+# Location of configuration files. This MUST NOT be modified.
+# --------------------------------------------------------------------------------
+resources: config/resources.yaml
+
+# --- General Settings ---
+output_dir: "results"  # Main output directory
+prefix: "Tpp3Exp" # Prefix for output files
+
+# --- Input Data ---
+# Dictionary of sample names to BAM file paths
+samples:
+  Tppp3Neg: "/scratch/qscd/Chrombpnet-ATACseq/Tppp3Neg_transpl_REP1.mLb.clN.sorted.bam"
+  # Add more samples as needed
+
+# --- Reference Genome & Annotations ---
+genome_build: "mm10" # Genome version available at UCSC goldenPath (see below `genome_fasta_url_template`)
+
+# Note: Use hgdownload.cse.ucsc.edu for human builds like hg38 if .soe doesn't work
+genome_fasta_url_template: "http://hgdownload.soe.ucsc.edu/goldenPath/{genome_build}/bigZips/{genome_build}.fa.gz"
+chrom_sizes_url: "http://hgdownload.soe.ucsc.edu/goldenPath/{genome_build}/bigZips/{genome_build}.chrom.sizes"
+blacklist_url: "http://mitra.stanford.edu/kundaje/akundaje/release/blacklists/{genome_build}-minimal/lists/{genome_build}-minimal.blacklist.bed.gz" # Check Kundaje lab resources for latest/best mm10/mm39 blacklist
+
+# --- Chromosome Splits ---
+# Directory containing fold_0.json, fold_1.json, ..., fold_4.json
+splits_dir: "config/chr_splits"
+folds: ["0", "1", "2", "3", "4"] # Corresponds to filenames like fold_0.json
+
+# --- Tool Parameters ---
+# MACS3 Parameters (adjust as needed)
+macs3:
+  macs3_gsize: "mm" # Mouse genome size estimate for MACS3
+  macs3_pvalue: 0.01
+  macs3_format: "BAMPE" # Or BAM if single-end
+  model_params: "--nolambda --nomodel --shift -75 --extsize 150" # Model related parameters
+  other_params: "--keep-dup all --call-summits" # Any other parameters you want to add
+
+# ChromBPNet Preprocessing Parameters
+peak_blacklist_extension: 1057
+read_shift_bp: 4 # Use 4 for ATAC-seq (+4/-4)
+binsize: 1000 # Standard ChromBPNet output resolution
+assay_type: "ATAC" # Or "DNASE"
+
+# ChromBPNet Training Parameters (Defaults from tutorial, adjust as needed)
+train_batch_size: 64
+train_epochs: 10 # Tutorial uses 10, real runs might need more
+bias_model_epochs: 10 # For bias model training
+background_fraction: 0.5 # Fraction parameter for filtering background regions for bias model training (adjust based on data/QC)
+nonpeaks_gc_match: 2 # Ratio of non-peaks to peaks
+
+# --- Docker Images ---
+chrombpnet_container: "docker://kundajelab/chrombpnet:latest"
+macs3_container: "docker://quay.io/biocontainers/macs3:3.0.3--py39h0699b22_0"
+utils_container: "docker://quay.io/biocontainers/bedtools:2.31.1--h13024bc_3" # Example, might need ucsc-wiggletools or similar

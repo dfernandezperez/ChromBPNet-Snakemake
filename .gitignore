@@ -1,0 +1,17 @@
+results/**
+resources/**
+logs/**
+.snakemake
+.snakemake/**
+._*
+data/
+.DS_Store
+pid.txt
+.vscode/
+snakemake.err
+snakemake.log
+.RData
+.conda
+.condarc
+*.err
+*.out

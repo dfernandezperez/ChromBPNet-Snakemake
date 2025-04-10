@@ -1,0 +1,28 @@
+import os
+import glob
+import yaml
+
+# Load configuration
+configfile: "config/config.yaml"
+
+# --- Helper Variables ---
+RESOURCES    = yaml.load(open(config['resources'], 'r'), Loader=yaml.FullLoader)
+OUTPUT_DIR   = config["output_dir"]
+PREFIX       = config["prefix"]
+SAMPLES      = list(config["samples"].keys())
+GENOME_FASTA = f"data/{config["genome_build"]}.fa"
+GENOME_BUILD = config["genome_build"]
+SPLITS_DIR   = config["splits_dir"]
+FOLDS        = config["folds"]
+
+include: "rules/prepare_data.smk"
+include: "rules/preprocessing.smk"
+include: "rules/training.smk"
+include: "rules/prediction.smk"
+
+# --- Target Rule: Define final desired outputs ---
+rule all:
+    input:
+        f"{OUTPUT_DIR}/preprocessing/peaks/{PREFIX}_pooled_peaks.narrowPeak",
+        expand(f"{OUTPUT_DIR}/preprocessing/nonpeaks/{PREFIX}_fold_{{fold}}_negatives.bed", fold=FOLDS)
+        # expand(f"{OUTPUT_DIR}/models/fold_{{fold}}/chrombpnet_model", fold=FOLDS)

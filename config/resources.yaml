@@ -1,0 +1,65 @@
+# resources.yaml
+# Resource configuration for the ChromBPNet Snakemake pipeline
+# Runtime is specified in minutes.
+# mem_mb is specified in megabytes (GB * 1000).
+# cpu specifies the number of cores (adjust based on tool capabilities and cluster policy).
+# retries specifies how many times a job should be resubmitted on failure (useful for transient issues).
+
+get_chrom_sizes:
+  runtime: 10
+  mem_mb: 1000
+  retries: 3
+
+get_blacklist:
+  runtime: 10
+  mem_mb: 1000
+  retries: 3
+
+download_and_index_fasta:
+  runtime: 60
+  mem_mb: 10000
+  retries: 3
+
+macs3_peak_calling_pooled:
+  runtime: 180
+  mem_mb: 32000
+  cpu: 8
+  retries: 1
+
+filter_peaks_blacklist:
+  runtime: 30
+  mem_mb: 4000
+  retries: 1
+
+chrombpnet_prep_nonpeaks:
+  runtime: 60 
+  mem_mb: 16000
+  retries: 1
+
+train_bias_model:
+  runtime: 720
+  mem_mb: 64000
+  cpu: 8
+  # gpu: 1
+  retries: 0
+
+train_chrombpnet:
+  runtime: 2880
+  mem_mb: 128000
+  cpu: 8
+  # gpu: 1
+  retries: 0
+
+predict_chrombpnet:
+  runtime: 360
+  mem_mb: 64000
+  cpu: 4
+  # gpu: 1
+  retries: 1
+
+interpret_chrombpnet:
+  runtime: 480
+  mem_mb: 96000
+  cpu: 4
+  # gpu: 1
+  retries: 1
