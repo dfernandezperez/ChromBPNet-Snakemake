@@ -66,16 +66,21 @@ rule get_blacklist:
         gunzip -c {input} > {output} 2> {log}
         """
 
+# Function to get BAM paths for a sample (handles single or multiple paths)
+def get_bams_for_sample(wildcards):
+    paths_str = SAMPLE_INFO_DF.loc[wildcards.sample, "BamPath"]
+    return paths_str.split(';') # Split semicolon-separated paths
+
 rule merge_sort_index_bams:
     input:
-        bams = lambda wildcards: [config["samples"][sample] for sample in SAMPLES]
+        bams = get_bams_for_sample
     output:
-        bam = f"{OUTPUT_DIR}/preprocessing/bams/{PREFIX}_pooled.bam",
-        bai = f"{OUTPUT_DIR}/preprocessing/bams/{PREFIX}_pooled.bam.bai"
+        bam = f"{OUTPUT_DIR}/preprocessing/bams/{{sample}}.bam",
+        bai = f"{OUTPUT_DIR}/preprocessing/bams/{{sample}}.bam.bai"
     params:
         # Calculate the number of input bams here
         num_bams      = lambda w, input: len(input.bams),
-        merged_unsort = f"{OUTPUT_DIR}/preprocessing/bams/{PREFIX}_merged_unsorted.bam"
+        merged_unsort = f"{OUTPUT_DIR}/preprocessing/bams/{{sample}}_merged_unsorted.bam"
     resources:
         mem_mb  = RESOURCES["merge_sort_index_bams"]["mem_mb"],
         runtime = RESOURCES["merge_sort_index_bams"]["runtime"]
@@ -84,7 +89,7 @@ rule merge_sort_index_bams:
     container:
         config["chrombpnet_container"]
     log:
-        f"{OUTPUT_DIR}/logs/bams/{PREFIX}_merge_sort_index.log"
+        f"{OUTPUT_DIR}/logs/bams/{{sample}}_merge_sort_index.log"
     shell:
         # Create the output directory first
         """

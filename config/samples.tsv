@@ -1,0 +1,3 @@
+SampleName	BamPath	UseForBiasModel
+Tppp3Neg	/scratch/qscd/Chrombpnet-ATACseq/Tppp3Neg_transpl_REP1.mLb.clN.sorted.bam	True
+Tppp3Pos	/scratch/qscd/Chrombpnet-ATACseq/Tppp3Pos_transpl_REP1.mLb.clN.sorted.bam	True

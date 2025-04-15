@@ -1,13 +1,13 @@
 # --- Preprocessing Rules (Per Sample) ---
 rule macs3_peak_calling_pooled:
     input:
-        bam = f"{OUTPUT_DIR}/preprocessing/bams/{PREFIX}_pooled.bam",
+        bam = f"{OUTPUT_DIR}/preprocessing/bams/{{sample}}.bam"
     output:
-        peaks   = f"{OUTPUT_DIR}/preprocessing/peaks/{PREFIX}_pooled_peaks.narrowPeak",
-        summits = f"{OUTPUT_DIR}/preprocessing/peaks/{PREFIX}_pooled_summits.bed"
+        peaks   = f"{OUTPUT_DIR}/preprocessing/peaks/{{sample}}_peaks.narrowPeak",
+        summits = f"{OUTPUT_DIR}/preprocessing/peaks/{{sample}}_summits.bed"
     params:
         outdir = f"{OUTPUT_DIR}/preprocessing/peaks",
-        name   = f"{PREFIX}_pooled",
+        name   = lambda w: w.sample,
         gsize  = config["macs3"]["macs3_gsize"],
         pvalue = config["macs3"]["macs3_pvalue"],
         format = config["macs3"]["macs3_format"],
@@ -21,7 +21,7 @@ rule macs3_peak_calling_pooled:
     container:
         config["macs3_container"]
     log:
-        f"{OUTPUT_DIR}/logs/macs3/{PREFIX}_pooled.log"
+        f"{OUTPUT_DIR}/logs/macs3/{{sample}}_pooled.log"
     shell:
         """
         macs3 callpeak \
@@ -38,21 +38,21 @@ rule macs3_peak_calling_pooled:
 
 rule filter_peaks_blacklist:
     input:
-        peaks       = f"{OUTPUT_DIR}/preprocessing/peaks/{PREFIX}_pooled_peaks.narrowPeak",
+        peaks       = f"{OUTPUT_DIR}/preprocessing/peaks/{{sample}}_peaks.narrowPeak",
         blacklist   = rules.get_blacklist.output.blacklist_bed,
         chrom_sizes = rules.get_chrom_sizes.output.chrom_sizes
     output:
-        filtered_peaks = f"{OUTPUT_DIR}/preprocessing/peaks/{PREFIX}_pooled_peaks_no_blacklist.bed"
+        filtered_peaks = f"{OUTPUT_DIR}/preprocessing/peaks/{{sample}}_peaks_no_blacklist.bed"
     params:
         slop_bp = config["chromnpnet_bias"]["peak_blacklist_extension"],
-        slop_tmp = f"{OUTPUT_DIR}/preprocessing/peaks/slop_tmp.bed" # Use a temporary file for the slopped blacklist
+        slop_tmp = lambda w: f"{OUTPUT_DIR}/preprocessing/peaks/{{w.sample}}_slop_tmp.bed" # Use a temporary file for the slopped blacklist
     resources:
         mem_mb  = RESOURCES["filter_peaks_blacklist"]["mem_mb"],
         runtime = RESOURCES["filter_peaks_blacklist"]["runtime"]
     container:
         config["utils_container"] # Needs bedtools
     log:
-        f"{OUTPUT_DIR}/logs/filter_peaks/{PREFIX}_pooled.log"
+        f"{OUTPUT_DIR}/logs/filter_peaks/{{sample}}.log"
     shell:
         """
         bedtools slop -i {input.blacklist} -g {input.chrom_sizes} -b {params.slop_bp} > {params.slop_tmp} 2>> {log}
@@ -68,9 +68,9 @@ rule chrombpnet_prep_nonpeaks:
         fold_json   = os.path.join(SPLITS_DIR, "fold_{fold}.json"),
         blacklist   = rules.get_blacklist.output.blacklist_bed
     output:
-        nonpeaks = f"{OUTPUT_DIR}/preprocessing/nonpeaks/{PREFIX}_fold_{{fold}}_negatives.bed",
+        nonpeaks = f"{OUTPUT_DIR}/preprocessing/nonpeaks/{{sample}}_fold_{{fold}}_negatives.bed",
     params:
-        output_prefix = f"{OUTPUT_DIR}/preprocessing/nonpeaks/{PREFIX}_fold_{{fold}}"
+        output_prefix = f"{OUTPUT_DIR}/preprocessing/nonpeaks/{{sample}}_fold_{{fold}}"
     resources:
         mem_mb  = RESOURCES["chrombpnet_prep_nonpeaks"]["mem_mb"],
         runtime = RESOURCES["chrombpnet_prep_nonpeaks"]["runtime"]
@@ -79,7 +79,7 @@ rule chrombpnet_prep_nonpeaks:
     shadow:
         "minimal"
     log:
-        f"{OUTPUT_DIR}/logs/chrombpnet_nonpeaks/{PREFIX}_fold_{{fold}}.log"
+        f"{OUTPUT_DIR}/logs/chrombpnet_nonpeaks/{{sample}}_fold_{{fold}}.log"
     shell:
         """
         chrombpnet prep nonpeaks \

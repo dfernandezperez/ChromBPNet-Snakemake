@@ -1,16 +1,10 @@
-# ---  Location of configuration files. This MUST NOT be modified. ---
+# ---  Location of configuration files and input. This MUST NOT be modified. ---
 resources: config/resources.yaml
+sample_sheet: config/samples.tsv
 
 # --- General Settings ---
 output_dir: "results"  # Main output directory
-prefix: "Tpp3Exp" # Prefix for output files
 host_tmp_dir: "tmpdir" # Define the HOST path for temporary files. It will be created inside the out_dir path
-
-# --- Input Data ---
-# Dictionary of sample names to BAM file paths
-samples:
-  Tppp3Neg: "/scratch/qscd/Chrombpnet-ATACseq/Tppp3Neg_transpl_REP1.mLb.clN.sorted.bam"
-  # Add more samples as needed
 
 # --- Reference Genome & Annotations ---
 genome_build: "mm10" # Genome version available at UCSC goldenPath (see below `genome_fasta_url_template`)
@@ -47,7 +41,6 @@ chromnpnet_bias:
 # ChromBPNet Training Parameters (Defaults from tutorial, adjust as needed)
 chromnpnet_model:
   assay_type: "ATAC" # Or "DNASE"
-  extra_params: "" # Extra parameters for bias model
   extra_params: "" # Extra parameters for bias model
 
 # --- Docker Images ---

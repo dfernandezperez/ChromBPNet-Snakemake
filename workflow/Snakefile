@@ -1,15 +1,29 @@
 import os
 import glob
 import yaml
+import pandas as pd
 
 # Load configuration
 configfile: "config/config.yaml"
 
+# --- Read Sample Sheet and Prepare Sample Info ---
+SAMPLE_INFO_DF = pd.read_csv(config["sample_sheet"], sep='\t')
+SAMPLE_INFO_DF.set_index("SampleName", drop=False, inplace=True)
+SAMPLES = SAMPLE_INFO_DF.index.tolist() # All unique sample names
+
+# Get samples and ALL their constituent BAMs for bias model
+BIAS_SAMPLES_DF = SAMPLE_INFO_DF[SAMPLE_INFO_DF["UseForBiasModel"] == True]
+ALL_BIAS_BAMS = []
+for bam_str in BIAS_SAMPLES_DF["BamPath"]:
+    ALL_BIAS_BAMS.extend(bam_str.split(';'))
+
+if not ALL_BIAS_BAMS:
+    print(f"WARNING: No samples marked 'True' for bias model generation in {config['sample_sheet']}. Bias models will not be generated.")
+    # Consider raising an error if bias models are essential for the workflow
+
 # --- Helper Variables ---
 RESOURCES    = yaml.load(open(config['resources'], 'r'), Loader=yaml.FullLoader)
 OUTPUT_DIR   = config["output_dir"]
-PREFIX       = config["prefix"]
-SAMPLES      = list(config["samples"].keys())
 GENOME_BUILD = config["genome_build"]
 GENOME_FASTA = f"data/{GENOME_BUILD}.fa"
 BLACKLIST    = f"config/Blacklist/lists/{GENOME_BUILD}-blacklist.v2.bed.gz" if config["custom_blacklist"] == "" else config["custom_blacklist"]
@@ -29,14 +43,18 @@ envvars: "SINGULARITY_TMPDIR","TMPDIR"
 
 # --- Load snakemake rules ---
 include: "rules/prepare_data.smk"
+include: "rules/generate_bias_model.smk"
 include: "rules/preprocessing.smk"
 include: "rules/training.smk"
-include: "rules/prediction.smk"
+# include: "rules/prediction.smk"
+
+print(SAMPLES)
 
 # --- Target Rule: Define final desired outputs ---
 rule all:
     input:
-        f"{OUTPUT_DIR}/preprocessing/peaks/{PREFIX}_pooled_peaks.narrowPeak",
-        expand(f"{OUTPUT_DIR}/preprocessing/nonpeaks/{PREFIX}_fold_{{fold}}_negatives.bed", fold=FOLDS),
-        expand(f"{OUTPUT_DIR}/bias_models/fold_{{fold}}/complete.flag", fold=FOLDS)
-        # expand(f"{OUTPUT_DIR}/models/fold_{{fold}}/chrombpnet_model", fold=FOLDS)
+        expand(f"{OUTPUT_DIR}/preprocessing/peaks/{{sample}}_peaks.narrowPeak", sample = SAMPLES),
+        expand(f"{OUTPUT_DIR}/preprocessing/nonpeaks/{{sample}}_fold_{{fold}}_negatives.bed", fold = FOLDS, sample = SAMPLES),
+        # f"{OUTPUT_DIR}/preprocessing/peaks/bias_pooled_peaks_no_blacklist.bed",
+        # expand(f"{OUTPUT_DIR}/bias_models/fold_{{fold}}/complete.flag", fold=FOLDS)
+        expand(f"{OUTPUT_DIR}/chrombpnet_models/{{sample}}/fold_{{fold}}", sample = SAMPLES, fold = FOLDS)
