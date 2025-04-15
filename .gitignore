@@ -15,3 +15,6 @@ snakemake.log
 .condarc
 *.err
 *.out
+.keras
+.cache
+.config
