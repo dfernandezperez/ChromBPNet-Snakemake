@@ -1,59 +1,81 @@
 # --- Model Training Rules (Per Fold) ---
-
 rule train_bias_model:
     input:
-        genome=GENOME_FASTA,
-        # !! Adjust path based on actual output of chrombpnet prep !!
-        nonpeaks=f"{OUTPUT_DIR}/preprocessing/background_regions/{PREFIX}_pooled_negatives.bed",
-        # !! Adjust path based on actual output of chrombpnet prep !!
-        bigwig=f"{OUTPUT_DIR}/preprocessing/signal/{PREFIX}_pooled_raw.bw",
-        splits=os.path.join(SPLITS_DIR, "fold_{fold}.json") # e.g., path/to/splits/fold_0.json
+        genome      = GENOME_FASTA,
+        chrom_sizes = rules.get_chrom_sizes.output.chrom_sizes,
+        split       = os.path.join(SPLITS_DIR, "fold_{fold}.json"),
+        bam         = f"{OUTPUT_DIR}/preprocessing/bams/{PREFIX}_pooled.bam",
+        peaks       = f"{OUTPUT_DIR}/preprocessing/peaks/{PREFIX}_pooled_peaks_no_blacklist.bed",
+        nonpeaks    = f"{OUTPUT_DIR}/preprocessing/nonpeaks/{PREFIX}_fold_{{fold}}_negatives.bed"
     output:
-        # ChromBPNet saves model as a directory
-        bias_model_dir=directory(f"{OUTPUT_DIR}/models/fold_{{fold}}/bias_model")
+        out_dir    = directory(f"{OUTPUT_DIR}/bias_models/fold_{{fold}}"),
+        flag       = f"{OUTPUT_DIR}/bias_models/fold_{{fold}}/complete.flag", # Add flag for rule completion
+        bias_model = f"{OUTPUT_DIR}/bias_models/fold_{{fold}}/models/{PREFIX}_bias.h5",
     params:
-        prefix=f"{PREFIX}_fold_{{fold}}_bias",
-        epochs=config["bias_model_epochs"],
-        batch_size=config["train_batch_size"],
-        # Filter fraction for background regions - might need adjustment
-        background_fraction=config["background_fraction"]
+        prefix = f"{PREFIX}",
+        assay  = config["chromnpnet_bias"]["assay_type"],
+        extra  = config["chromnpnet_bias"]["extra_params"],
+        out_dir_tmp = f"{OUTPUT_DIR}/tmp_bias_models/fold_{{fold}}"
+    resources:
+        mem_mb    = RESOURCES["train_bias_model"]["mem_mb"],
+        runtime   = RESOURCES["train_bias_model"]["runtime"],
+        cpu       = RESOURCES["train_bias_model"]["cpu"],
+        gres      = RESOURCES["train_bias_model"]["gres"],
+        slurm_partition = RESOURCES["train_bias_model"]["slurm_partition"]
+    retries: 
+        RESOURCES["train_bias_model"]["retries"]
     container:
         config["chrombpnet_container"]
     log:
-        f"{OUTPUT_DIR}/logs/train_bias/fold_{{fold}}.log"
+        f"{OUTPUT_DIR}/logs/train_bias/{PREFIX}_fold_{{fold}}.log"
     shell:
-        # Command based on wiki - check flags for bias-only training
-        # May need to specify only background_regions bed file
         """
         chrombpnet bias pipeline \
+                -ibam {input.bam} \
+                -d {params.assay} \
                 -g {input.genome} \
-                -b {input.nonpeaks} \
-                -s {input.bigwig} \
-                -f {input.splits} \
-                -o {output.bias_model_dir} \
-                -op {params.prefix} \
-                -e {params.epochs} \
-                -bs {params.batch_size} \
-                -bf {params.background_fraction} \
-                 > {log} 2>&1
+                -c {input.chrom_sizes} \
+                -p {input.peaks} \
+                -n {input.nonpeaks} \
+                -fl {input.split} \
+                -b 0.5 \
+                -o {params.out_dir_tmp} \
+                -fp {params.prefix} \
+                {params.extra} \
+                > {log} 2>&1
+        # chrombpnet raises an error if the output folder exists at launch.
+        # Snakemake creates the outdir before rule execution, so the only workaround
+        # is to run the tool in a tmp folder and then move it to the actual output 
+        mv {params.out_dir_tmp} {output.out_dir}
+        touch {output.flag}
         """
 
 rule train_chrombpnet:
     input:
-        genome=GENOME_FASTA,
-        # !! Adjust path based on actual output of chrombpnet prep !!
-        peaks=f"{OUTPUT_DIR}/preprocessing/peaks/{PREFIX}_pooled_peaks.narrowPeak", # Might need a processed peak file
-        nonpeaks=f"{OUTPUT_DIR}/preprocessing/background_regions/{PREFIX}_pooled_negatives.bed",
-        bigwig=f"{OUTPUT_DIR}/preprocessing/signal/{PREFIX}_pooled_raw.bw",
-        splits=os.path.join(SPLITS_DIR, "fold_{fold}.json"),
-        bias_model_dir=f"{OUTPUT_DIR}/models/fold_{{fold}}/bias_model" # Depends on previous rule
+        genome      = GENOME_FASTA,
+        chrom_sizes = rules.get_chrom_sizes.output.chrom_sizes,
+        split       = os.path.join(SPLITS_DIR, "fold_{fold}.json"),
+        bam         = f"{OUTPUT_DIR}/preprocessing/bams/{PREFIX}_pooled.bam",
+        peaks       = f"{OUTPUT_DIR}/preprocessing/peaks/{PREFIX}_pooled_peaks_no_blacklist.bed",
+        nonpeaks    = f"{OUTPUT_DIR}/preprocessing/nonpeaks/{PREFIX}_fold_{{fold}}_negatives.bed",
+        bias_model  = f"{OUTPUT_DIR}/bias_models/fold_{{fold}}/models/{PREFIX}_bias.h5"
     output:
-        # ChromBPNet saves model as a directory
-        model_dir=directory(f"{OUTPUT_DIR}/models/fold_{{fold}}/chrombpnet_model")
+        out_dir = directory(f"{OUTPUT_DIR}/chrombpnet_models/{PREFIX}/fold_{{fold}}"),
+        flag    = f"{OUTPUT_DIR}/chrombpnet_models/{PREFIX}/fold_{{fold}}/complete.flag", # Add flag for rule completion
+        model   = f"{OUTPUT_DIR}/chrombpnet_models/{PREFIX}/fold_{{fold}}/models/{PREFIX}_chrombpnet_nobias.h5",
     params:
-        prefix=f"{PREFIX}_fold_{{fold}}_chrombpnet",
-        epochs=config["train_epochs"],
-        batch_size=config["train_batch_size"]
+        prefix = f"{PREFIX}",
+        assay  = config["chromnpnet_bias"]["assay_type"],
+        extra  = config["chromnpnet_bias"]["extra_params"],
+        out_dir_tmp = f"{OUTPUT_DIR}/tmp_models/{PREFIX}/fold_{{fold}}"
+    resources:
+        mem_mb    = RESOURCES["train_chrombpnet"]["mem_mb"],
+        runtime   = RESOURCES["train_chrombpnet"]["runtime"],
+        cpu       = RESOURCES["train_chrombpnet"]["cpu"],
+        gres      = RESOURCES["train_chrombpnet"]["gres"],
+        slurm_partition = RESOURCES["train_chrombpnet"]["slurm_partition"]
+    retries: 
+        RESOURCES["train_chrombpnet"]["retries"]
     container:
         config["chrombpnet_container"]
     log:
@@ -61,15 +83,21 @@ rule train_chrombpnet:
     shell:
         """
         chrombpnet pipeline \
+                -ibam {input.bam} \
+                -d {params.assay} \
                 -g {input.genome} \
+                -c {input.chrom_sizes} \
                 -p {input.peaks} \
                 -n {input.nonpeaks} \
-                -s {input.bigwig} \
-                -f {input.splits} \
-                -o {output.model_dir} \
-                -op {params.prefix} \
-                -e {params.epochs} \
-                -bs {params.batch_size} \
-                --bias-model-path {input.bias_model_dir} \
-                 > {log} 2>&1
+                -fl {input.split} \
+                -b {input.bias_model} \
+                -o {params.out_dir_tmp} \
+                -fp {params.prefix} \
+                {params.extra} \
+                > {log} 2>&1
+        # chrombpnet raises an error if the output folder exists at launch.
+        # Snakemake creates the outdir before rule execution, so the only workaround
+        # is to run the tool in a tmp folder and then move it to the actual output 
+        mv {params.out_dir_tmp} {output.out_dir}
+        touch {output.flag}
         """

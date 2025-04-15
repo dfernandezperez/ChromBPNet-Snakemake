@@ -9,5 +9,5 @@
 eval "$(conda shell.bash hook)"
 conda activate snakemake
 
-snakemake -j 1 --unlock
+snakemake -j 1 --unlock --cleanup-shadow
 snakemake --profile config/snakemake_profile/slurm "$@"

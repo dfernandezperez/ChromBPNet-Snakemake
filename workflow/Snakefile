@@ -10,11 +10,24 @@ RESOURCES    = yaml.load(open(config['resources'], 'r'), Loader=yaml.FullLoader)
 OUTPUT_DIR   = config["output_dir"]
 PREFIX       = config["prefix"]
 SAMPLES      = list(config["samples"].keys())
-GENOME_FASTA = f"data/{config["genome_build"]}.fa"
 GENOME_BUILD = config["genome_build"]
+GENOME_FASTA = f"data/{GENOME_BUILD}.fa"
+BLACKLIST    = f"config/Blacklist/lists/{GENOME_BUILD}-blacklist.v2.bed.gz" if config["custom_blacklist"] == "" else config["custom_blacklist"]
 SPLITS_DIR   = config["splits_dir"]
 FOLDS        = config["folds"]
 
+# --- Portable TMPDIR Configuration ---
+# Get the HOST path from the config
+HOST_TMP_DIR = f"{OUTPUT_DIR}/{config["host_tmp_dir"]}"
+# Set the HOST environment variable that Snakemake will pass through.
+# This ensures TMPDIR inside the container points to our mounted directory.
+os.environ["SINGULARITY_TMPDIR"] = HOST_TMP_DIR
+os.environ["TMPDIR"] = HOST_TMP_DIR
+# This tells Snakemake which HOST environment variables to pass into the container.
+# Singularity automatically strips the "SINGULARITY_" prefix.
+envvars: "SINGULARITY_TMPDIR","TMPDIR"
+
+# --- Load snakemake rules ---
 include: "rules/prepare_data.smk"
 include: "rules/preprocessing.smk"
 include: "rules/training.smk"
@@ -24,5 +37,6 @@ include: "rules/prediction.smk"
 rule all:
     input:
         f"{OUTPUT_DIR}/preprocessing/peaks/{PREFIX}_pooled_peaks.narrowPeak",
-        expand(f"{OUTPUT_DIR}/preprocessing/nonpeaks/{PREFIX}_fold_{{fold}}_negatives.bed", fold=FOLDS)
+        expand(f"{OUTPUT_DIR}/preprocessing/nonpeaks/{PREFIX}_fold_{{fold}}_negatives.bed", fold=FOLDS),
+        expand(f"{OUTPUT_DIR}/bias_models/fold_{{fold}}/complete.flag", fold=FOLDS)
         # expand(f"{OUTPUT_DIR}/models/fold_{{fold}}/chrombpnet_model", fold=FOLDS)

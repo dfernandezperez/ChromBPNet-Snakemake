@@ -20,10 +20,16 @@ download_and_index_fasta:
   mem_mb: 10000
   retries: 3
 
+merge_sort_index_bams:
+  runtime: 60
+  cpu: 10
+  mem_mb: 10000
+  retries: 1
+
 macs3_peak_calling_pooled:
-  runtime: 180
-  mem_mb: 32000
-  cpu: 8
+  runtime: 60
+  mem_mb: 20000
+  cpu: 1
   retries: 1
 
 filter_peaks_blacklist:
@@ -32,22 +38,24 @@ filter_peaks_blacklist:
   retries: 1
 
 chrombpnet_prep_nonpeaks:
-  runtime: 60 
-  mem_mb: 16000
+  runtime: 30 
+  mem_mb: 5000
   retries: 1
 
 train_bias_model:
-  runtime: 720
-  mem_mb: 64000
-  cpu: 8
-  # gpu: 1
+  runtime: 1500
+  mem_mb: 40000
+  cpu: 5
+  gres: gpu:rtx3090:1
+  slurm_partition: irb_gpu_3090
   retries: 0
 
 train_chrombpnet:
-  runtime: 2880
-  mem_mb: 128000
-  cpu: 8
-  # gpu: 1
+  runtime: 1500
+  mem_mb: 40000
+  cpu: 5
+  gres: gpu:rtx3090:1
+  slurm_partition: irb_gpu_3090
   retries: 0
 
 predict_chrombpnet:
