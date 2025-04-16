@@ -110,23 +110,12 @@ rule get_top_n_peaks_bias:
     resources:
         mem_mb  = RESOURCES["get_top_n_peaks"]["mem_mb"],
         runtime = RESOURCES["get_top_n_peaks"]["runtime"]
+    container:
+        None
     log:
         f"{OUTPUT_DIR}/logs/top_n_peaks/bias_pool_top{TOP_N_PEAKS}.log"
-    shell:
-        """
-        max_peaks="{params.top_n_peaks}"
-
-        score_threshold=\$(awk "{{print \$7}}" "{input.peaks}" | \
-                        sort -nr | \
-                        awk -v n="\$max_peaks" "NR==n{{print; exit}} END{{if(NR<n) print \$1}}" \
-                       )
-
-        echo "Score threshold for top $max_peaks peaks: \$score_threshold" >> {log}
-
-        awk -v thresh="\$score_threshold" "BEGIN{{OFS="\\t"}} \$7 >= thresh" "{input.peaks}" > "{output.top_peaks}" 2>> {log}
-
-        echo "Filtered peaks saved to {output.top_peaks}" >> {log}
-        """
+    script:
+        "../scripts/filter_top_peaks.py"
 
 rule chrombpnet_bias_prep_nonpeaks:
     input:

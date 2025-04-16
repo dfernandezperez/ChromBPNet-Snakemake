@@ -52,7 +52,7 @@ include: "rules/training.smk"
 # --- Target Rule: Define final desired outputs ---
 rule all:
     input:
-        expand(f"{OUTPUT_DIR}/preprocessing/peaks/{{sample}}_peaks_no_blacklist_top{TOP_N_PEAKS}.bed", sample = SAMPLES)
+        # expand(f"{OUTPUT_DIR}/preprocessing/peaks/{{sample}}_peaks_no_blacklist_top{TOP_N_PEAKS}.bed", sample = SAMPLES)
         # expand(f"{OUTPUT_DIR}/preprocessing/peaks/{{sample}}_peaks.narrowPeak", sample = SAMPLES),
         # expand(f"{OUTPUT_DIR}/preprocessing/nonpeaks/{{sample}}_fold_{{fold}}_negatives.bed", fold = FOLDS, sample = SAMPLES),
-        # expand(f"{OUTPUT_DIR}/chrombpnet_models/{{sample}}/fold_{{fold}}", sample = SAMPLES, fold = FOLDS)
+        expand(f"{OUTPUT_DIR}/chrombpnet_models/{{sample}}/fold_{{fold}}", sample = SAMPLES, fold = FOLDS)

@@ -74,16 +74,8 @@ rule get_top_n_peaks:
         None
     log:
         f"{OUTPUT_DIR}/logs/top_n_peaks/{{sample}}_top{TOP_N_PEAKS}.log" # Match output filename
-    shell:
-        """
-        score_threshold=$(cut -f7 {input.peaks} | sort -nr | awk -v n={params.top_n_peaks} "NR==n{print; exit} ENif(NR<n) print $1}")
-
-        echo "Score threshold for top {params.top_n_peaks} peaks: $score_threshold" >> {log}
-
-        awk -v "BEGIN{OFS="\t"} $7 >= $score_threshold" {input.peaks} > {output.top_peaks} 2>> {log}
-
-        echo "Filtered peaks saved to {output.top_peaks}" >> {log}
-        """
+    script:
+        "../scripts/filter_top_peaks.py"
 
 rule chrombpnet_prep_nonpeaks:
     input:
