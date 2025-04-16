@@ -95,7 +95,7 @@ rule merge_sort_index_bams:
         """
         if [ {params.num_bams} -eq 1 ]; then
             echo "Only one input BAM found, sorting and indexing..." > {log}
-            samtools sort -@ {threads} -o {output.bam} {input.bams[0]} 2>> {log}
+            samtools sort -@ {threads} -m 7G -o {output.bam} {input.bams[0]} 2>> {log}
         else
             echo "Merging {params.num_bams} BAM files..." > {log}
             # Use a temporary file for merged unsorted BAM
@@ -103,11 +103,11 @@ rule merge_sort_index_bams:
             MERGED_UNSORTED={params.merged_unsort}
             samtools merge -@ {threads} -f $MERGED_UNSORTED {input.bams} 2>> {log}
             echo "Sorting merged BAM..." >> {log}
-            samtools sort -@ {threads} -o {output.bam} $MERGED_UNSORTED 2>> {log}
+            samtools sort -@ {threads} -m 7G -o {output.bam} $MERGED_UNSORTED 2>> {log}
             echo "Removing temporary merged file..." >> {log}
             rm $MERGED_UNSORTED
         fi
         echo "Indexing final BAM..." >> {log}
-        samtools index {output.bam} 2>> {log}
+        samtools index -@ {threads} {output.bam} 2>> {log}
         echo "BAM processing finished." >> {log}
         """

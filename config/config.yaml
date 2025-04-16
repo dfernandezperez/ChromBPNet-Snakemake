@@ -32,6 +32,9 @@ macs3:
   model_params: "--nolambda --nomodel --shift -75 --extsize 150" # Model related parameters
   other_params: "--keep-dup all --call-summits" # Any other parameters you want to add
 
+# Filter top N macs3 peaks by pvalue after blacklist region filt (chromBPNet paper uses 200k)
+macs3_top_n_peaks: 200000
+
 # ChromBPNet Preprocessing Parameters
 chromnpnet_bias:
   peak_blacklist_extension: 1057 # DON'T CHANGE. This is based on the ChromBPNet Input size (2114bp). Change only if the tool updates it.

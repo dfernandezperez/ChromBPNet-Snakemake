@@ -1,3 +1,5 @@
 SampleName	BamPath	UseForBiasModel
-Tppp3Neg	/scratch/qscd/Chrombpnet-ATACseq/Tppp3Neg_transpl_REP1.mLb.clN.sorted.bam	True
-Tppp3Pos	/scratch/qscd/Chrombpnet-ATACseq/Tppp3Pos_transpl_REP1.mLb.clN.sorted.bam	True
+FetalTransplant	/scratch/qscd/atac_bam_files/Fetal_transpl_REP1.mLb.clN.sorted.bam;/scratch/qscd/atac_bam_files/Fetal_transpl_REP2.mLb.clN.sorted.bam	True
+FetalNaive	/scratch/qscd/atac_bam_files/Fetal_Naive_REP1.mLb.clN.sorted.bam;/scratch/qscd/atac_bam_files/Fetal_Naive_REP2.mLb.clN.sorted.bam;/scratch/qscd/atac_bam_files/Fetal_Naive_REP3.mLb.clN.sorted.bam	True
+AdultNaive	/scratch/qscd/atac_bam_files/Adult_Naive_REP1.mLb.clN.sorted.bam;/scratch/qscd/atac_bam_files/Adult_Naive_REP2.mLb.clN.sorted.bam;/scratch/qscd/atac_bam_files/Adult_Naive_REP3.mLb.clN.sorted.bam	True
+AdultTransplant	/scratch/qscd/atac_bam_files/Adult_transpl_REP1.mLb.clN.sorted.bam;/scratch/qscd/atac_bam_files/Adult_transpl_REP2.mLb.clN.sorted.bam;/scratch/qscd/atac_bam_files/Adult_transpl_REP3.mLb.clN.sorted.bam;/scratch/qscd/atac_bam_files/Adult_transpl_REP4.mLb.clN.sorted.bam	True

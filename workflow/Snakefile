@@ -29,6 +29,7 @@ GENOME_FASTA = f"data/{GENOME_BUILD}.fa"
 BLACKLIST    = f"config/Blacklist/lists/{GENOME_BUILD}-blacklist.v2.bed.gz" if config["custom_blacklist"] == "" else config["custom_blacklist"]
 SPLITS_DIR   = config["splits_dir"]
 FOLDS        = config["folds"]
+TOP_N_PEAKS  = config["macs3_top_n_peaks"]
 
 # --- Portable TMPDIR Configuration ---
 # Get the HOST path from the config
@@ -48,13 +49,10 @@ include: "rules/preprocessing.smk"
 include: "rules/training.smk"
 # include: "rules/prediction.smk"
 
-print(SAMPLES)
-
 # --- Target Rule: Define final desired outputs ---
 rule all:
     input:
-        expand(f"{OUTPUT_DIR}/preprocessing/peaks/{{sample}}_peaks.narrowPeak", sample = SAMPLES),
-        expand(f"{OUTPUT_DIR}/preprocessing/nonpeaks/{{sample}}_fold_{{fold}}_negatives.bed", fold = FOLDS, sample = SAMPLES),
-        # f"{OUTPUT_DIR}/preprocessing/peaks/bias_pooled_peaks_no_blacklist.bed",
-        # expand(f"{OUTPUT_DIR}/bias_models/fold_{{fold}}/complete.flag", fold=FOLDS)
-        expand(f"{OUTPUT_DIR}/chrombpnet_models/{{sample}}/fold_{{fold}}", sample = SAMPLES, fold = FOLDS)
+        expand(f"{OUTPUT_DIR}/preprocessing/peaks/{{sample}}_peaks_no_blacklist_top{TOP_N_PEAKS}.bed", sample = SAMPLES)
+        # expand(f"{OUTPUT_DIR}/preprocessing/peaks/{{sample}}_peaks.narrowPeak", sample = SAMPLES),
+        # expand(f"{OUTPUT_DIR}/preprocessing/nonpeaks/{{sample}}_fold_{{fold}}_negatives.bed", fold = FOLDS, sample = SAMPLES),
+        # expand(f"{OUTPUT_DIR}/chrombpnet_models/{{sample}}/fold_{{fold}}", sample = SAMPLES, fold = FOLDS)

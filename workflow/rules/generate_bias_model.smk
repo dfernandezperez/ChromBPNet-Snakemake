@@ -9,10 +9,10 @@ rule merge_sort_index_bias_bams:
         num_bams      = lambda w, input: len(input.bams),
         merged_unsort = f"{OUTPUT_DIR}/bias_model/preprocessing/bams/bias_merged_unsorted.bam"
     resources:
-        mem_mb  = RESOURCES["merge_sort_index_bams"]["mem_mb"],
-        runtime = RESOURCES["merge_sort_index_bams"]["runtime"]
+        mem_mb  = RESOURCES["merge_sort_index_bias_bams"]["mem_mb"],
+        runtime = RESOURCES["merge_sort_index_bias_bams"]["runtime"]
     threads:
-        RESOURCES["merge_sort_index_bams"]["cpu"]
+        RESOURCES["merge_sort_index_bias_bams"]["cpu"]
     container:
         config["chrombpnet_container"]
     log:
@@ -21,7 +21,7 @@ rule merge_sort_index_bias_bams:
         """
         if [ {params.num_bams} -eq 1 ]; then
             echo "Only one input BAM found, sorting and indexing..." > {log}
-            samtools sort -@ {threads} -o {output.bam} {input.bams[0]} 2>> {log}
+            samtools sort -@ {threads} -m 7G -o {output.bam} {input.bams[0]} 2>> {log}
         else
             echo "Merging {params.num_bams} BAM files..." > {log}
             # Use a temporary file for merged unsorted BAM
@@ -29,17 +29,17 @@ rule merge_sort_index_bias_bams:
             MERGED_UNSORTED={params.merged_unsort}
             samtools merge -@ {threads} -f $MERGED_UNSORTED {input.bams} 2>> {log}
             echo "Sorting merged BAM..." >> {log}
-            samtools sort -@ {threads} -o {output.bam} $MERGED_UNSORTED 2>> {log}
+            samtools sort -@ {threads} -m 7G -o {output.bam} $MERGED_UNSORTED 2>> {log}
             echo "Removing temporary merged file..." >> {log}
             rm $MERGED_UNSORTED
         fi
         echo "Indexing final BAM..." >> {log}
-        samtools index {output.bam} 2>> {log}
+        samtools index -@ {threads} {output.bam} 2>> {log}
         echo "BAM processing finished." >> {log}
         """
 
-# --- Preprocessing Rules (Per Sample) ---
-rule macs3_bias_peak_calling_pooled:
+# --- Preprocessing Rules (for bias model) ---
+rule macs3_bias_peak_calling:
     input:
         bam = f"{OUTPUT_DIR}/bias_model/preprocessing/bams/bias_pool.bam"
     output:
@@ -100,10 +100,38 @@ rule filter_bias_peaks_blacklist:
         rm {params.slop_tmp}
         """
 
+rule get_top_n_peaks_bias:
+    input:
+        peaks = f"{OUTPUT_DIR}/bias_model/preprocessing/peaks/bias_pool_peaks_no_blacklist.bed"
+    output:
+        top_peaks = f"{OUTPUT_DIR}/bias_model/preprocessing/peaks/bias_pool_peaks_no_blacklist_top{TOP_N_PEAKS}.bed"
+    params:
+        top_n_peaks = config["macs3_top_n_peaks"],
+    resources:
+        mem_mb  = RESOURCES["get_top_n_peaks"]["mem_mb"],
+        runtime = RESOURCES["get_top_n_peaks"]["runtime"]
+    log:
+        f"{OUTPUT_DIR}/logs/top_n_peaks/bias_pool_top{TOP_N_PEAKS}.log"
+    shell:
+        """
+        max_peaks="{params.top_n_peaks}"
+
+        score_threshold=\$(awk "{{print \$7}}" "{input.peaks}" | \
+                        sort -nr | \
+                        awk -v n="\$max_peaks" "NR==n{{print; exit}} END{{if(NR<n) print \$1}}" \
+                       )
+
+        echo "Score threshold for top $max_peaks peaks: \$score_threshold" >> {log}
+
+        awk -v thresh="\$score_threshold" "BEGIN{{OFS="\\t"}} \$7 >= thresh" "{input.peaks}" > "{output.top_peaks}" 2>> {log}
+
+        echo "Filtered peaks saved to {output.top_peaks}" >> {log}
+        """
+
 rule chrombpnet_bias_prep_nonpeaks:
     input:
         genome      = GENOME_FASTA,
-        peaks       = rules.filter_bias_peaks_blacklist.output.filtered_peaks, # Use filtered peaks
+        peaks       = rules.get_top_n_peaks_bias.output.top_peaks, # Use filtered and top N macs3 peaks
         chrom_sizes = rules.get_chrom_sizes.output.chrom_sizes,
         fold_json   = os.path.join(SPLITS_DIR, "fold_{fold}.json"),
         blacklist   = rules.get_blacklist.output.blacklist_bed
@@ -132,15 +160,15 @@ rule chrombpnet_bias_prep_nonpeaks:
                 > {log} 2>&1
         """
 
-# --- Model Training Rules (Per Fold) ---
+# --- Model Training Rule (Per Fold) ---
 rule train_bias_model:
     input:
         genome      = GENOME_FASTA,
         chrom_sizes = rules.get_chrom_sizes.output.chrom_sizes,
         split       = os.path.join(SPLITS_DIR, "fold_{fold}.json"),
         bam         = f"{OUTPUT_DIR}/bias_model/preprocessing/bams/bias_pool.bam",
-        peaks       = f"{OUTPUT_DIR}/bias_model/preprocessing/peaks/bias_pool_peaks_no_blacklist.bed",
-        nonpeaks    = f"{OUTPUT_DIR}/bias_model/preprocessing/nonpeaks/bias_pool_fold_{{fold}}_negatives.bed"
+        nonpeaks    = f"{OUTPUT_DIR}/bias_model/preprocessing/nonpeaks/bias_pool_fold_{{fold}}_negatives.bed",
+        peaks       = f"{OUTPUT_DIR}/bias_model/preprocessing/peaks/bias_pool_peaks_no_blacklist_top{TOP_N_PEAKS}.bed",
     output:
         out_dir    = directory(f"{OUTPUT_DIR}/bias_model/bias_models/fold_{{fold}}"),
         flag       = f"{OUTPUT_DIR}/bias_model/bias_models/fold_{{fold}}/complete.flag", # Add flag for rule completion

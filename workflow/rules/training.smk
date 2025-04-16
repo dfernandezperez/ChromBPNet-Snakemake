@@ -4,8 +4,8 @@ rule train_chrombpnet:
         chrom_sizes = rules.get_chrom_sizes.output.chrom_sizes,
         split       = os.path.join(SPLITS_DIR, "fold_{fold}.json"),
         bam         = f"{OUTPUT_DIR}/preprocessing/bams/{{sample}}.bam",
-        peaks       = f"{OUTPUT_DIR}/preprocessing/peaks/{{sample}}_peaks_no_blacklist.bed",
         nonpeaks    = f"{OUTPUT_DIR}/preprocessing/nonpeaks/{{sample}}_fold_{{fold}}_negatives.bed",
+        peaks       = f"{OUTPUT_DIR}/preprocessing/peaks/{{sample}}_peaks_no_blacklist_top{TOP_N_PEAKS}.bed",
         bias_model  = f"{OUTPUT_DIR}/bias_model/bias_models/fold_{{fold}}/models/bias_bias.h5"
     output:
         out_dir = directory(f"{OUTPUT_DIR}/chrombpnet_models/{{sample}}/fold_{{fold}}"),

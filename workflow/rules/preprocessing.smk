@@ -1,5 +1,5 @@
 # --- Preprocessing Rules (Per Sample) ---
-rule macs3_peak_calling_pooled:
+rule macs3_peak_calling:
     input:
         bam = f"{OUTPUT_DIR}/preprocessing/bams/{{sample}}.bam"
     output:
@@ -60,10 +60,35 @@ rule filter_peaks_blacklist:
         rm {params.slop_tmp}
         """
 
+rule get_top_n_peaks:
+    input:
+        peaks = f"{OUTPUT_DIR}/preprocessing/peaks/{{sample}}_peaks_no_blacklist.bed"
+    output:
+        top_peaks = f"{OUTPUT_DIR}/preprocessing/peaks/{{sample}}_peaks_no_blacklist_top{TOP_N_PEAKS}.bed" # Embed N in filename if desired
+    params:
+        top_n_peaks = config["macs3_top_n_peaks"],
+    resources:
+        mem_mb  = RESOURCES["get_top_n_peaks"]["mem_mb"],
+        runtime = RESOURCES["get_top_n_peaks"]["runtime"]
+    container:
+        None
+    log:
+        f"{OUTPUT_DIR}/logs/top_n_peaks/{{sample}}_top{TOP_N_PEAKS}.log" # Match output filename
+    shell:
+        """
+        score_threshold=$(cut -f7 {input.peaks} | sort -nr | awk -v n={params.top_n_peaks} "NR==n{print; exit} ENif(NR<n) print $1}")
+
+        echo "Score threshold for top {params.top_n_peaks} peaks: $score_threshold" >> {log}
+
+        awk -v "BEGIN{OFS="\t"} $7 >= $score_threshold" {input.peaks} > {output.top_peaks} 2>> {log}
+
+        echo "Filtered peaks saved to {output.top_peaks}" >> {log}
+        """
+
 rule chrombpnet_prep_nonpeaks:
     input:
         genome      = GENOME_FASTA,
-        peaks       = rules.filter_peaks_blacklist.output.filtered_peaks, # Use filtered peaks
+        peaks       = rules.get_top_n_peaks.output.top_peaks, # Use filtered and top N macs3 peaks
         chrom_sizes = rules.get_chrom_sizes.output.chrom_sizes,
         fold_json   = os.path.join(SPLITS_DIR, "fold_{fold}.json"),
         blacklist   = rules.get_blacklist.output.blacklist_bed

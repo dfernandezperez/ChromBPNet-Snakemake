@@ -20,27 +20,39 @@ download_and_index_fasta:
   mem_mb: 10000
   retries: 3
 
+# samtools sort resources are already optimized, not recommended to modify them.
 merge_sort_index_bams:
-  runtime: 60
+  runtime: 120
+  cpu: 7
+  mem_mb: 60000
+  retries: 0
+
+merge_sort_index_bias_bams:
+  runtime: 120
   cpu: 10
-  mem_mb: 10000
-  retries: 1
+  mem_mb: 100000
+  retries: 0
 
 macs3_peak_calling_pooled:
   runtime: 60
   mem_mb: 20000
   cpu: 1
-  retries: 1
+  retries: 0
 
 filter_peaks_blacklist:
   runtime: 30
   mem_mb: 4000
-  retries: 1
+  retries: 0
+
+get_top_n_peaks:
+  runtime: 30
+  mem_mb: 8000
+  retries: 0
 
 chrombpnet_prep_nonpeaks:
-  runtime: 30 
-  mem_mb: 5000
-  retries: 1
+  runtime: 240 
+  mem_mb: 8000
+  retries: 0
 
 train_bias_model:
   runtime: 1500
@@ -63,11 +75,11 @@ predict_chrombpnet:
   mem_mb: 64000
   cpu: 4
   # gpu: 1
-  retries: 1
+  retries: 0
 
 interpret_chrombpnet:
   runtime: 480
   mem_mb: 96000
   cpu: 4
   # gpu: 1
-  retries: 1
+  retries: 0
