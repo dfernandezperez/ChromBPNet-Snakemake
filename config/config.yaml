@@ -21,7 +21,8 @@ chrom_sizes_url: "http://hgdownload.soe.ucsc.edu/goldenPath/{genome_build}/bigZi
 # --- Chromosome Splits ---
 # Directory containing fold_0.json, fold_1.json, ..., fold_4.json
 splits_dir: "config/chr_splits"
-folds: ["0", "1", "2", "3", "4"] # Corresponds to filenames like fold_0.json
+# folds: ["0", "1", "2", "3", "4"] # Corresponds to filenames like fold_0.json
+folds: ["0"] # Corresponds to filenames like fold_0.json
 
 # --- Tool Parameters ---
 # MACS3 Parameters (adjust as needed)

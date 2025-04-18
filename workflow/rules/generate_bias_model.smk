@@ -173,6 +173,8 @@ rule train_bias_model:
         cpu       = RESOURCES["train_bias_model"]["cpu"],
         gres      = RESOURCES["train_bias_model"]["gres"],
         slurm_partition = RESOURCES["train_bias_model"]["slurm_partition"]
+    threads:
+        RESOURCES["train_bias_model"]["cpu"]
     retries: 
         RESOURCES["train_bias_model"]["retries"]
     container:
@@ -181,6 +183,9 @@ rule train_bias_model:
         f"{OUTPUT_DIR}/logs/train_bias/bias_fold_{{fold}}.log"
     shell:
         """
+        # Delete tmp folder (in case exists from a failed run) 
+        # to avoid chrombpnet to complain
+        rm -rf {params.out_dir_tmp} 
         chrombpnet bias pipeline \
                 -ibam {input.bam} \
                 -d {params.assay} \

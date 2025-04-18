@@ -18,10 +18,12 @@ rule train_chrombpnet:
         out_dir_tmp = f"{OUTPUT_DIR}/tmp_models/{{sample}}/fold_{{fold}}"
     resources:
         mem_mb    = RESOURCES["train_chrombpnet"]["mem_mb"],
-        runtime   = RESOURCES["train_chrombpnet"]["runtime"],
         cpu       = RESOURCES["train_chrombpnet"]["cpu"],
+        runtime   = RESOURCES["train_chrombpnet"]["runtime"],
         gres      = RESOURCES["train_chrombpnet"]["gres"],
         slurm_partition = RESOURCES["train_chrombpnet"]["slurm_partition"]
+    threads:
+        RESOURCES["train_chrombpnet"]["cpu"]
     retries: 
         RESOURCES["train_chrombpnet"]["retries"]
     container:
@@ -49,3 +51,23 @@ rule train_chrombpnet:
         mv {params.out_dir_tmp} {output.out_dir}
         touch {output.flag}
         """
+
+
+# --- Test Rule ---
+rule gpu_test_rule:
+    output:
+        # Create a simple flag file to mark completion
+        gpu_check_flag=touch(f"{OUTPUT_DIR}/logs/gpu_test/tensorflow_gpu_check_successful.flag")
+    resources:
+        mem_mb    = RESOURCES["train_chrombpnet"]["mem_mb"],
+        cpu       = RESOURCES["train_chrombpnet"]["cpu"],
+        runtime   = RESOURCES["train_chrombpnet"]["runtime"],
+        gres      = RESOURCES["train_chrombpnet"]["gres"],
+        slurm_partition = RESOURCES["train_chrombpnet"]["slurm_partition"]
+    container:
+        config["chrombpnet_container"] # Use the NVIDIA container
+    log:
+        # Log file will contain nvidia-smi output
+        f"{OUTPUT_DIR}/logs/gpu_test/nvidia_smi_output.log"
+    script:
+        "../scripts/test_gpu_chrombpnet.py"

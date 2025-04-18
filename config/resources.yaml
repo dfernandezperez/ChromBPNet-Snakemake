@@ -55,17 +55,17 @@ chrombpnet_prep_nonpeaks:
   retries: 0
 
 train_bias_model:
-  runtime: 1500
-  mem_mb: 40000
-  cpu: 5
+  runtime: 1400
+  mem_mb: 80000
+  cpu: 2
   gres: gpu:rtx3090:1
   slurm_partition: irb_gpu_3090
   retries: 0
 
 train_chrombpnet:
-  runtime: 1500
-  mem_mb: 40000
-  cpu: 5
+  runtime: 1400
+  mem_mb: 80000
+  cpu: 2
   gres: gpu:rtx3090:1
   slurm_partition: irb_gpu_3090
   retries: 0
