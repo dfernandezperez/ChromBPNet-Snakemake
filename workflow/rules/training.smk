@@ -6,7 +6,7 @@ rule train_chrombpnet:
         bam         = f"{OUTPUT_DIR}/preprocessing/bams/{{sample}}.bam",
         nonpeaks    = f"{OUTPUT_DIR}/preprocessing/nonpeaks/{{sample}}_fold_{{fold}}_negatives.bed",
         peaks       = f"{OUTPUT_DIR}/preprocessing/peaks/{{sample}}_peaks_no_blacklist_top{TOP_N_PEAKS}.bed",
-        bias_model  = f"{OUTPUT_DIR}/bias_model/bias_models/fold_{{fold}}/models/bias_bias.h5"
+        bias_model  = f"{OUTPUT_DIR}/bias_model/bias_models/fold_{{fold}}/models/bias.h5"
     output:
         out_dir = directory(f"{OUTPUT_DIR}/chrombpnet_models/{{sample}}/fold_{{fold}}"),
         flag    = f"{OUTPUT_DIR}/chrombpnet_models/{{sample}}/fold_{{fold}}/complete.flag", # Add flag for rule completion

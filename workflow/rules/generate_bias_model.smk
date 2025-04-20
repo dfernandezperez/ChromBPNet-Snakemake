@@ -161,9 +161,8 @@ rule train_bias_model:
     output:
         out_dir    = directory(f"{OUTPUT_DIR}/bias_model/bias_models/fold_{{fold}}"),
         flag       = f"{OUTPUT_DIR}/bias_model/bias_models/fold_{{fold}}/complete.flag", # Add flag for rule completion
-        bias_model = f"{OUTPUT_DIR}/bias_model/bias_models/fold_{{fold}}/models/bias_bias.h5",
+        bias_model = f"{OUTPUT_DIR}/bias_model/bias_models/fold_{{fold}}/models/bias.h5",
     params:
-        prefix = "pooled",
         assay  = config["chromnpnet_bias"]["assay_type"],
         extra  = config["chromnpnet_bias"]["extra_params"],
         out_dir_tmp = f"{OUTPUT_DIR}/bias_model/tmp_bias_models/fold_{{fold}}"
@@ -196,7 +195,6 @@ rule train_bias_model:
                 -fl {input.split} \
                 -b 0.5 \
                 -o {params.out_dir_tmp} \
-                -fp {params.prefix} \
                 {params.extra} \
                 > {log} 2>&1
         # chrombpnet raises an error if the output folder exists at launch.

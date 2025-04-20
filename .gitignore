@@ -18,3 +18,4 @@ snakemake.log
 .keras
 .cache
 .config
+.nv

@@ -70,16 +70,24 @@ train_chrombpnet:
   slurm_partition: irb_gpu_3090
   retries: 0
 
-predict_chrombpnet:
-  runtime: 360
-  mem_mb: 64000
-  cpu: 4
-  # gpu: 1
+pred_bw:
+  runtime: 1400
+  mem_mb: 80000
+  cpu: 2
+  gres: gpu:rtx3090:1
+  slurm_partition: irb_gpu_3090
   retries: 0
 
-interpret_chrombpnet:
-  runtime: 480
-  mem_mb: 96000
+contribs_bw:
+  runtime: 1400
+  mem_mb: 80000
+  cpu: 2
+  gres: gpu:rtx3090:1
+  slurm_partition: irb_gpu_3090
+  retries: 0
+
+modisco_tf:
+  runtime: 5700
+  mem_mb: 50000
   cpu: 4
-  # gpu: 1
   retries: 0
