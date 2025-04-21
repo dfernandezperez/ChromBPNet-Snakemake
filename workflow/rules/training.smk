@@ -8,13 +8,13 @@ rule train_chrombpnet:
         peaks       = f"{OUTPUT_DIR}/preprocessing/peaks/{{sample}}_peaks_no_blacklist_top{TOP_N_PEAKS}.bed",
         bias_model  = f"{OUTPUT_DIR}/bias_model/bias_models/fold_{{fold}}/models/bias.h5"
     output:
-        out_dir = directory(f"{OUTPUT_DIR}/chrombpnet_models/{{sample}}/fold_{{fold}}"),
         flag    = f"{OUTPUT_DIR}/chrombpnet_models/{{sample}}/fold_{{fold}}/complete.flag", # Add flag for rule completion
         model   = f"{OUTPUT_DIR}/chrombpnet_models/{{sample}}/fold_{{fold}}/models/{{sample}}_chrombpnet_nobias.h5",
     params:
         prefix = f"{{sample}}",
         assay  = config["chromnpnet_bias"]["assay_type"],
         extra  = config["chromnpnet_bias"]["extra_params"],
+        out_dir = f"{OUTPUT_DIR}/chrombpnet_models/{{sample}}/fold_{{fold}}",
         out_dir_tmp = f"{OUTPUT_DIR}/tmp_models/{{sample}}/fold_{{fold}}"
     resources:
         mem_mb    = RESOURCES["train_chrombpnet"]["mem_mb"],
@@ -48,7 +48,7 @@ rule train_chrombpnet:
         # chrombpnet raises an error if the output folder exists at launch.
         # Snakemake creates the outdir before rule execution, so the only workaround
         # is to run the tool in a tmp folder and then move it to the actual output 
-        mv {params.out_dir_tmp} {output.out_dir}
+        mv {params.out_dir_tmp} {params.out_dir}
         touch {output.flag}
         """
 

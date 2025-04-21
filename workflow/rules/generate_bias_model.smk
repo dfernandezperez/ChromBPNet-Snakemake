@@ -159,13 +159,13 @@ rule train_bias_model:
         nonpeaks    = f"{OUTPUT_DIR}/bias_model/preprocessing/nonpeaks/bias_pool_fold_{{fold}}_negatives.bed",
         peaks       = f"{OUTPUT_DIR}/bias_model/preprocessing/peaks/bias_pool_peaks_no_blacklist_top{TOP_N_PEAKS}.bed",
     output:
-        out_dir    = directory(f"{OUTPUT_DIR}/bias_model/bias_models/fold_{{fold}}"),
         flag       = f"{OUTPUT_DIR}/bias_model/bias_models/fold_{{fold}}/complete.flag", # Add flag for rule completion
         bias_model = f"{OUTPUT_DIR}/bias_model/bias_models/fold_{{fold}}/models/bias.h5",
     params:
         assay  = config["chromnpnet_bias"]["assay_type"],
         extra  = config["chromnpnet_bias"]["extra_params"],
-        out_dir_tmp = f"{OUTPUT_DIR}/bias_model/tmp_bias_models/fold_{{fold}}"
+        out_dir = f"{OUTPUT_DIR}/bias_model/bias_models/fold_{{fold}}/",
+        out_dir_tmp = f"{OUTPUT_DIR}/bias_model/tmp_bias_models/fold_{{fold}}/"
     resources:
         mem_mb    = RESOURCES["train_bias_model"]["mem_mb"],
         runtime   = RESOURCES["train_bias_model"]["runtime"],
@@ -200,6 +200,6 @@ rule train_bias_model:
         # chrombpnet raises an error if the output folder exists at launch.
         # Snakemake creates the outdir before rule execution, so the only workaround
         # is to run the tool in a tmp folder and then move it to the actual output 
-        mv {params.out_dir_tmp} {output.out_dir}
-        touch {output.flag}
+        mv {params.out_dir_tmp} {params.out_dir} >> {log} 2>&1
+        touch {output.flag} >> {log} 2>&1
         """
