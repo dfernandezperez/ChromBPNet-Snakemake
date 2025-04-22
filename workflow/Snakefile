@@ -56,6 +56,6 @@ rule all:
         # expand(f"{OUTPUT_DIR}/preprocessing/peaks/{{sample}}_peaks.narrowPeak", sample = SAMPLES),
         # expand(f"{OUTPUT_DIR}/preprocessing/nonpeaks/{{sample}}_fold_{{fold}}_negatives.bed", fold = FOLDS, sample = SAMPLES),
         # f"{OUTPUT_DIR}/logs/gpu_test/tensorflow_gpu_check_successful.flag",
-        expand(f"{OUTPUT_DIR}/chrombpnet_models/{{sample}}/fold_{{fold}}", sample = SAMPLES, fold = FOLDS),
+        expand(f"{OUTPUT_DIR}/chrombpnet_models/{{sample}}/fold_{{fold}}/models/{{sample}}_chrombpnet_nobias.h5", sample = SAMPLES, fold = FOLDS),
         expand(f"{OUTPUT_DIR}/pred_bw/{{sample}}_fold_{{fold}}_chrombpnet_nobias.bw", sample = SAMPLES, fold = FOLDS),
         expand(f"{OUTPUT_DIR}/modisco_tf/{{sample}}/{{sample}}_fold_{{fold}}_modisco.h5", sample = SAMPLES, fold = FOLDS)
