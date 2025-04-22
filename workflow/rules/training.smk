@@ -14,7 +14,7 @@ rule train_chrombpnet:
         prefix = f"{{sample}}",
         assay  = config["chromnpnet_bias"]["assay_type"],
         extra  = config["chromnpnet_bias"]["extra_params"],
-        out_dir = f"{OUTPUT_DIR}/chrombpnet_models/{{sample}}/fold_{{fold}}",
+        out_dir = f"{OUTPUT_DIR}/chrombpnet_models/{{sample}}",
         out_dir_tmp = f"{OUTPUT_DIR}/tmp_models/{{sample}}/fold_{{fold}}"
     resources:
         mem_mb    = RESOURCES["train_chrombpnet"]["mem_mb"],
