@@ -164,7 +164,7 @@ rule train_bias_model:
     params:
         assay  = config["chromnpnet_bias"]["assay_type"],
         extra  = config["chromnpnet_bias"]["extra_params"],
-        out_dir = f"{OUTPUT_DIR}/bias_model/bias_models",
+        out_dir = f"{OUTPUT_DIR}/bias_model/bias_models/fold_{{fold}}",
         out_dir_tmp = f"{OUTPUT_DIR}/bias_model/tmp_bias_models/fold_{{fold}}"
     resources:
         mem_mb    = RESOURCES["train_bias_model"]["mem_mb"],
@@ -182,9 +182,10 @@ rule train_bias_model:
         f"{OUTPUT_DIR}/logs/train_bias/bias_fold_{{fold}}.log"
     shell:
         """
-        # Delete tmp folder (in case exists from a failed run) 
+        # Delete tmp and output folder (in case exists from a failed run) 
         # to avoid chrombpnet to complain
-        rm -rf {params.out_dir_tmp} 
+        rm -rf {params.out_dir_tmp}
+        rm -rf {params.out_dir}
         chrombpnet bias pipeline \
                 -ibam {input.bam} \
                 -d {params.assay} \

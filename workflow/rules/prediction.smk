@@ -96,6 +96,6 @@ rule modisco_tf:
         mkdir -p {params.out_fold}
         modisco motifs \
         -i {input.profile_scores} \
-        -n 1000000 \
+        -n 100000 \
         -op {params.out_fold}/{params.prefix} > {log} 2>&1
         """

@@ -14,7 +14,7 @@ rule train_chrombpnet:
         prefix = f"{{sample}}",
         assay  = config["chromnpnet_bias"]["assay_type"],
         extra  = config["chromnpnet_bias"]["extra_params"],
-        out_dir = f"{OUTPUT_DIR}/chrombpnet_models/{{sample}}",
+        out_dir = f"{OUTPUT_DIR}/chrombpnet_models/{{sample}}/fold_{{fold}}",
         out_dir_tmp = f"{OUTPUT_DIR}/tmp_models/{{sample}}/fold_{{fold}}"
     resources:
         mem_mb    = RESOURCES["train_chrombpnet"]["mem_mb"],
@@ -32,6 +32,10 @@ rule train_chrombpnet:
         f"{OUTPUT_DIR}/logs/train_chrombpnet/{{sample}}_fold_{{fold}}.log"
     shell:
         """
+        # Delete tmpand output folder (in case exists from a failed run) 
+        # to avoid chrombpnet to complain
+        rm -rf {params.out_dir_tmp} > {log} 2>&1
+        rm -rf {params.out_dir} >> {log} 2>&1
         chrombpnet pipeline \
                 -ibam {input.bam} \
                 -d {params.assay} \
@@ -44,12 +48,12 @@ rule train_chrombpnet:
                 -o {params.out_dir_tmp} \
                 -fp {params.prefix} \
                 {params.extra} \
-                > {log} 2>&1
+                >> {log} 2>&1
         # chrombpnet raises an error if the output folder exists at launch.
         # Snakemake creates the outdir before rule execution, so the only workaround
         # is to run the tool in a tmp folder and then move it to the actual output 
-        mv {params.out_dir_tmp} {params.out_dir}
-        touch {output.flag}
+        mv {params.out_dir_tmp} {params.out_dir} >> {log} 2>&1
+        touch {output.flag} >> {log} 2>&1
         """
 
 
