@@ -184,8 +184,8 @@ rule train_bias_model:
         """
         # Delete tmp and output folder (in case exists from a failed run) 
         # to avoid chrombpnet to complain
-        rm -rf {params.out_dir_tmp}
-        rm -rf {params.out_dir}
+        rm -rf {params.out_dir_tmp} > {log} 2>&1
+        rm -rf {params.out_dir} >> {log} 2>&1
         chrombpnet bias pipeline \
                 -ibam {input.bam} \
                 -d {params.assay} \
@@ -197,7 +197,8 @@ rule train_bias_model:
                 -b 0.5 \
                 -o {params.out_dir_tmp} \
                 {params.extra} \
-                > {log} 2>&1
+                >> {log} 2>&1
+        echo "bias model finished! Moving output files to output directory" >> {log} 2>&1
         # chrombpnet raises an error if the output folder exists at launch.
         # Snakemake creates the outdir before rule execution, so the only workaround
         # is to run the tool in a tmp folder and then move it to the actual output
