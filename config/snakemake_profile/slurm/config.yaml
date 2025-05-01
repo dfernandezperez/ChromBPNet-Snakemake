@@ -4,7 +4,7 @@ cores            : 500 # Define total amount of cores that the pipeline can exec
 latency-wait     : 60
 keep-going       : true
 use-singularity  : true
-singularity-args : "--bind /scratch/qscd --bind /home --nv"
+singularity-args : "--bind /home --nv"
 --use-conda      : true
 retries          : 0    # Set the default number of retires if a job fails
 default-resources: 
