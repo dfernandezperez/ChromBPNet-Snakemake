@@ -8,7 +8,7 @@ rule pred_bw:
          pred_bw = f"{OUTPUT_DIR}/pred_bw/{{sample}}_fold_{{fold}}_chrombpnet_nobias.bw",
      params:
          out_fold = f"{OUTPUT_DIR}/pred_bw",
-         prefix   = lambda w: "{w.sample}_fold_{w.fold}"
+         prefix   = lambda w: f"{{w.sample}}_fold_{{w.fold}}"
      resources:
         mem_mb    = RESOURCES["pred_bw"]["mem_mb"],
         cpu       = RESOURCES["pred_bw"]["cpu"],
@@ -45,7 +45,7 @@ rule contribs_bw:
          counts   = f"{OUTPUT_DIR}/contribs_bw/{{sample}}/{{sample}}_fold_{{fold}}.counts_scores.h5"
      params:
          out_fold = f"{OUTPUT_DIR}/contribs_b/{{sample}}/",
-         prefix   = lambda w: "{w.sample}_fold_{w.fold}"
+         prefix   = lambda w: f"{{w.sample}}_fold_{{w.fold}}"
      resources:
         mem_mb    = RESOURCES["contribs_bw"]["mem_mb"],
         cpu       = RESOURCES["contribs_bw"]["cpu"],
@@ -78,7 +78,7 @@ rule modisco_tf:
          modisco = f"{OUTPUT_DIR}/modisco_tf/{{sample}}/{{sample}}_fold_{{fold}}_modisco.h5"
      params:
          out_fold = f"{OUTPUT_DIR}/modisco_tf/{{sample}}/",
-         prefix   = lambda w: "{w.sample}_fold_{w.fold}"
+         prefix   = lambda w: f"{{w.sample}}_fold_{{w.fold}}"
      resources:
         mem_mb    = RESOURCES["modisco_tf"]["mem_mb"],
         cpu       = RESOURCES["modisco_tf"]["cpu"],
