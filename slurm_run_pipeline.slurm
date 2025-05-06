@@ -4,7 +4,7 @@
 #SBATCH --mem=20G
 #SBATCH -o %N.%J.out # STDOUT
 #SBATCH -e %N.%j.err # STDERR
-#SBATCH --time=96:00:00
+#SBATCH --time=168:00:00
 
 eval "$(conda shell.bash hook)"
 conda activate snakemake

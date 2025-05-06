@@ -55,7 +55,7 @@ chrombpnet_prep_nonpeaks:
   retries: 0
 
 train_bias_model:
-  runtime: 1400
+  runtime: 2880
   mem_mb: 80000
   cpu: 2
   gres: gpu:rtx3090:1
@@ -63,7 +63,7 @@ train_bias_model:
   retries: 0
 
 train_chrombpnet:
-  runtime: 1400
+  runtime: 2880
   mem_mb: 80000
   cpu: 2
   gres: gpu:rtx3090:1
@@ -71,7 +71,7 @@ train_chrombpnet:
   retries: 0
 
 pred_bw:
-  runtime: 1400
+  runtime: 2880
   mem_mb: 80000
   cpu: 2
   gres: gpu:rtx3090:1
@@ -79,7 +79,7 @@ pred_bw:
   retries: 0
 
 contribs_bw:
-  runtime: 1400
+  runtime: 2880
   mem_mb: 80000
   cpu: 2
   gres: gpu:rtx3090:1
@@ -89,5 +89,5 @@ contribs_bw:
 modisco_tf:
   runtime: 5700
   mem_mb: 50000
-  cpu: 4
+  cpu: 10
   retries: 0
