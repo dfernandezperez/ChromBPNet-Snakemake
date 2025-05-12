@@ -47,6 +47,13 @@ chromnpnet_model:
   assay_type: "ATAC" # Or "DNASE"
   extra_params: "" # Extra parameters for bias model
 
+# Modisco Parameters (adjust as needed). This meme database 
+# is located in the singularity image of chromBPnet.
+modisco_tf:
+  meme_db: "/scratch/chrombpnet/chrombpnet/data/motifs.meme.txt"
+  seqlets: 200000 # Number of max seqlets
+  tomtom_n_match: 3 # Number of motifs to match by TOMTOM
+
 # --- Docker Images ---
 chrombpnet_container: "docker://kundajelab/chrombpnet:latest"
 macs3_container: "docker://quay.io/biocontainers/macs3:3.0.3--py39h0699b22_0"

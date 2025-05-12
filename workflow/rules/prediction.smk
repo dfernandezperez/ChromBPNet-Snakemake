@@ -8,7 +8,7 @@ rule pred_bw:
          pred_bw = f"{OUTPUT_DIR}/pred_bw/{{sample}}_fold_{{fold}}_chrombpnet_nobias.bw",
      params:
          out_fold = f"{OUTPUT_DIR}/pred_bw",
-         prefix   = lambda w: f"{{w.sample}}_fold_{{w.fold}}"
+         prefix   = f"{{sample}}_fold_{{fold}}"
      resources:
         mem_mb    = RESOURCES["pred_bw"]["mem_mb"],
         cpu       = RESOURCES["pred_bw"]["cpu"],
@@ -44,8 +44,8 @@ rule contribs_bw:
          profiles = f"{OUTPUT_DIR}/contribs_bw/{{sample}}/{{sample}}_fold_{{fold}}.profile_scores.h5",
          counts   = f"{OUTPUT_DIR}/contribs_bw/{{sample}}/{{sample}}_fold_{{fold}}.counts_scores.h5"
      params:
-         out_fold = f"{OUTPUT_DIR}/contribs_b/{{sample}}/",
-         prefix   = lambda w: f"{{w.sample}}_fold_{{w.fold}}"
+         out_fold = f"{OUTPUT_DIR}/contribs_bw/{{sample}}",
+         prefix   = f"{{sample}}_fold_{{fold}}"
      resources:
         mem_mb    = RESOURCES["contribs_bw"]["mem_mb"],
         cpu       = RESOURCES["contribs_bw"]["cpu"],
@@ -75,10 +75,12 @@ rule modisco_tf:
      input:
          profile_scores = f"{OUTPUT_DIR}/contribs_bw/{{sample}}/{{sample}}_fold_{{fold}}.profile_scores.h5"
      output:
-         modisco = f"{OUTPUT_DIR}/modisco_tf/{{sample}}/{{sample}}_fold_{{fold}}_modisco.h5"
+         h5 = f"{OUTPUT_DIR}/modisco_tf/{{sample}}/{{sample}}_fold_{{fold}}_modisco.h5",
+         report  = directory(f"{OUTPUT_DIR}/modisco_tf/{{sample}}/reports)"
      params:
-         out_fold = f"{OUTPUT_DIR}/modisco_tf/{{sample}}/",
-         prefix   = lambda w: f"{{w.sample}}_fold_{{w.fold}}"
+         n_seqlets = config["modisco_tf"]["seqlets"],
+         meme_db   = config["modisco_tf"]["meme_db"],
+         tomtom_n_match  = config["modisco_tf"]["tomtom_n_match"]
      resources:
         mem_mb    = RESOURCES["modisco_tf"]["mem_mb"],
         cpu       = RESOURCES["modisco_tf"]["cpu"],
@@ -93,9 +95,19 @@ rule modisco_tf:
          f"{OUTPUT_DIR}/logs/modisco_tf/{{sample}}_fold_{{fold}}.log"
      shell:
         """
-        mkdir -p {params.out_fold}
+        # Run modisco motif discovery
+        echo "Running modisco motifs" > {log}
         modisco motifs \
         -i {input.profile_scores} \
-        -n 100000 \
-        -op {params.out_fold}/{params.prefix} > {log} 2>&1
+        -n {params.n_seqlets} \
+        -o {output.h5} >> {log} 2>&1
+        
+        # Generate modisco report
+        echo "Running modisco report" >> {log}
+        modisco report \
+        -i {input.profile_scores} \
+        -m {params.meme_db} \
+        -n {params.tomtom_n_match} \
+        -o {output.report} \
+        -s {output.report} >> {log} 2>&1
         """

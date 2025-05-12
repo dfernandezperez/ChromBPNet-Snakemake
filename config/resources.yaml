@@ -87,7 +87,7 @@ contribs_bw:
   retries: 0
 
 modisco_tf:
-  runtime: 5700
-  mem_mb: 50000
-  cpu: 10
+  runtime: 2880
+  mem_mb: 40000
+  cpu: 20
   retries: 0
