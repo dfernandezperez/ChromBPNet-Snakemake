@@ -76,7 +76,7 @@ rule modisco_tf:
          profile_scores = f"{OUTPUT_DIR}/contribs_bw/{{sample}}/{{sample}}_fold_{{fold}}.profile_scores.h5"
      output:
          h5 = f"{OUTPUT_DIR}/modisco_tf/{{sample}}/{{sample}}_fold_{{fold}}_modisco.h5",
-         report  = directory(f"{OUTPUT_DIR}/modisco_tf/{{sample}}/{{sample}}_fold_{{fold}}_reports")
+         report = directory(f"{OUTPUT_DIR}/modisco_tf/{{sample}}/{{sample}}_fold_{{fold}}_reports")
      params:
          n_seqlets = config["modisco_tf"]["seqlets"],
          meme_db   = config["modisco_tf"]["meme_db"],
@@ -105,7 +105,7 @@ rule modisco_tf:
         # Generate modisco report
         echo "Running modisco report" >> {log}
         modisco report \
-        -i {input.profile_scores} \
+        -i {output.h5} \
         -m {params.meme_db} \
         -n {params.tomtom_n_match} \
         -o {output.report} \
