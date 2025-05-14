@@ -37,9 +37,6 @@ rule get_chrom_sizes:
     resources:
         mem_mb  = RESOURCES["get_chrom_sizes"]["mem_mb"],
         runtime = RESOURCES["get_chrom_sizes"]["runtime"]
-    resources:
-        mem_mb  = RESOURCES["chrombpnet_prep_nonpeaks"]["mem_mb"],
-        runtime = RESOURCES["chrombpnet_prep_nonpeaks"]["runtime"]
     retries:
         RESOURCES["get_chrom_sizes"]["retries"]
     log:
@@ -64,6 +61,23 @@ rule get_blacklist:
     shell:
         """
         gunzip -c {input} > {output} 2> {log}
+        """
+
+rule get_motif_db:
+    output:
+        motif_db=f"data/motif_db.txt"
+    params:
+        url=config["motif_file_url"]
+    resources:
+        mem_mb  = RESOURCES["get_motif_db"]["mem_mb"],
+        runtime = RESOURCES["get_motif_db"]["runtime"]
+    retries:
+        RESOURCES["get_motif_db"]["retries"]
+    log:
+        f"{OUTPUT_DIR}/logs/data_prep/get_motif_db.log"
+    shell:
+        """
+        wget -O {output.motif_db} {params.url} 2> {log}
         """
 
 # Function to get BAM paths for a sample (handles single or multiple paths)

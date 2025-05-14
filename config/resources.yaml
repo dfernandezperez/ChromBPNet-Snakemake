@@ -15,6 +15,11 @@ get_blacklist:
   mem_mb: 1000
   retries: 3
 
+get_motif_db:
+  runtime: 10
+  mem_mb: 1000
+  retries: 3
+
 download_and_index_fasta:
   runtime: 60
   mem_mb: 10000
@@ -90,4 +95,15 @@ modisco_tf:
   runtime: 2880
   mem_mb: 40000
   cpu: 20
+  retries: 0
+
+merge_condition_peaks:
+  runtime: 120
+  mem_mb: 20000
+  cpu: 1
+
+tobias_bindetect:
+  runtime: 600
+  mem_mb: 100000
+  cpu: 30
   retries: 0

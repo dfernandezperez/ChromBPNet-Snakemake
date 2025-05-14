@@ -17,6 +17,7 @@ custom_blacklist: ""
 # Note: Use hgdownload.cse.ucsc.edu for human builds like hg38 if .soe doesn't work
 genome_fasta_url_template: "http://hgdownload.soe.ucsc.edu/goldenPath/{genome_build}/bigZips/{genome_build}.fa.gz"
 chrom_sizes_url: "http://hgdownload.soe.ucsc.edu/goldenPath/{genome_build}/bigZips/{genome_build}.chrom.sizes"
+motif_file_url: "https://jaspar.elixir.no/download/data/2024/CORE/JASPAR2024_CORE_vertebrates_non-redundant_pfms_jaspar.txt" # has to be in JASPAR or MEME format
 
 # --- Chromosome Splits ---
 # Directory containing fold_0.json, fold_1.json, ..., fold_4.json
@@ -53,6 +54,9 @@ modisco_tf:
   meme_db: "/scratch/chrombpnet/chrombpnet/data/motifs.meme.txt"
   seqlets: 200000 # Number of max seqlets
   tomtom_n_match: 3 # Number of motifs to match by TOMTOM
+
+# Bindetect extra parameters
+bindetect: ""
 
 # --- Docker Images ---
 chrombpnet_container: "docker://kundajelab/chrombpnet:latest"

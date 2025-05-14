@@ -48,14 +48,14 @@ include: "rules/generate_bias_model.smk"
 include: "rules/preprocessing.smk"
 include: "rules/training.smk"
 include: "rules/prediction.smk"
+include: "rules/tobias.smk"
 
 # --- Target Rule: Define final desired outputs ---
 rule all:
     input:
-        # expand(f"{OUTPUT_DIR}/preprocessing/peaks/{{sample}}_peaks_no_blacklist_top{TOP_N_PEAKS}.bed", sample = SAMPLES)
-        # expand(f"{OUTPUT_DIR}/preprocessing/peaks/{{sample}}_peaks.narrowPeak", sample = SAMPLES),
-        # expand(f"{OUTPUT_DIR}/preprocessing/nonpeaks/{{sample}}_fold_{{fold}}_negatives.bed", fold = FOLDS, sample = SAMPLES),
         # f"{OUTPUT_DIR}/logs/gpu_test/tensorflow_gpu_check_successful.flag",
         expand(f"{OUTPUT_DIR}/chrombpnet_models/{{sample}}/fold_{{fold}}/models/{{sample}}_chrombpnet_nobias.h5", sample = SAMPLES, fold = FOLDS),
         expand(f"{OUTPUT_DIR}/pred_bw/{{sample}}_fold_{{fold}}_chrombpnet_nobias.bw", sample = SAMPLES, fold = FOLDS),
-        expand(f"{OUTPUT_DIR}/modisco_tf/{{sample}}/{{sample}}_fold_{{fold}}_modisco.h5", sample = SAMPLES, fold = FOLDS)
+        expand(f"{OUTPUT_DIR}/modisco_tf/{{sample}}/{{sample}}_fold_{{fold}}_modisco.h5", sample = SAMPLES, fold = FOLDS),
+        f"{OUTPUT_DIR}/tobias/TFBS_count",
+        f"{OUTPUT_DIR}/tobias/TFBS_profile",
