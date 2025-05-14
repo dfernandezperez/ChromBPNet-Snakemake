@@ -6,7 +6,7 @@ rule create_peaks_header:
         f"{OUTPUT_DIR}/tobias/peaks_header.txt"
     shell:
         """
-        echo "chr\tstart\tstop\tname" > {output}
+        echo "chr\tstart\tstop\tname\tscore\tstrand\tsignalValue\tpValue\tqValue\tpeak" > {output}
         """
 
 #---------------------- Run TOBIAS

@@ -13,7 +13,7 @@ rule merge_condition_peaks:
     container:
         config["chrombpnet_container"]
     shell:
-        "cat {input} | sort -k1,1 -k2,2n | bedtools merge -d 5 -c 4 -o distinct | sort -k4,4 > {output}"
+        "cat {input} | sort -k1,1 -k2,2n | bedtools merge -d 5 -c 4,5,6,7,8,9,10 -o distinct,distinct,distinct,distinct,distinct,distinct,distinct | sort -k4,4 > {output}"
 
 rule pred_bw:
      input:
