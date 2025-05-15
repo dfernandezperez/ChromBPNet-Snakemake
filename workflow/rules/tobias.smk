@@ -1,3 +1,20 @@
+# Union peaks across all conditions to generate predictions and contributions
+rule merge_condition_peaks:
+    input: 
+        expand(f"{OUTPUT_DIR}/contribs_bw/{{sample}}/{{sample}}_fold_{{fold}}.interpreted_regions.bed", sample = SAMPLES, fold = FOLDS)
+    output: 
+        f"{OUTPUT_DIR}/preprocessing/consensus_peaks/all_merged.bed"
+    resources:
+        mem_mb    = RESOURCES["merge_condition_peaks"]["mem_mb"],
+        cpu       = RESOURCES["merge_condition_peaks"]["cpu"],
+        runtime   = RESOURCES["merge_condition_peaks"]["runtime"]
+    message: 
+        "Merging peaks across conditions"
+    container:
+        config["chrombpnet_container"]
+    shell:
+        "cat {input} | sort -k1,1 -k2,2n | bedtools merge -d 5 -c 4 -o distinct | sort -k4,4 > {output}"
+
 #create header for "peaks" given via run_info
 rule create_peaks_header: 
     input:
@@ -6,7 +23,7 @@ rule create_peaks_header:
         f"{OUTPUT_DIR}/tobias/peaks_header.txt"
     shell:
         """
-        echo "chr\tstart\tstop\tname\tscore\tstrand\tsignalValue\tpValue\tqValue\tpeak" > {output}
+        echo "chr\tstart\tstop\tname" > {output}
         """
 
 #---------------------- Run TOBIAS

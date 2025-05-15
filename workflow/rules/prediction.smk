@@ -1,25 +1,8 @@
-# Union peaks across all conditions to generate predictions and contributions
-rule merge_condition_peaks:
-    input: 
-        expand(f"{OUTPUT_DIR}/contribs_bw/{{sample}}/{{sample}}_fold_{{fold}}.interpreted_regions.bed", sample = SAMPLES, fold = FOLDS)
-    output: 
-        f"{OUTPUT_DIR}/preprocessing/consensus_peaks/all_merged.bed"
-    resources:
-        mem_mb    = RESOURCES["merge_condition_peaks"]["mem_mb"],
-        cpu       = RESOURCES["merge_condition_peaks"]["cpu"],
-        runtime   = RESOURCES["merge_condition_peaks"]["runtime"]
-    message: 
-        "Merging peaks across conditions"
-    container:
-        config["chrombpnet_container"]
-    shell:
-        "cat {input} | sort -k1,1 -k2,2n | bedtools merge -d 5 -c 4,5,6,7,8,9,10 -o distinct,distinct,distinct,distinct,distinct,distinct,distinct | sort -k4,4 > {output}"
-
 rule pred_bw:
      input:
          genome      = GENOME_FASTA,
          model       = f"{OUTPUT_DIR}/chrombpnet_models/{{sample}}/fold_{{fold}}/models/{{sample}}_chrombpnet_nobias.h5",
-         peaks       = f"{OUTPUT_DIR}/preprocessing/consensus_peaks/all_merged.bed",
+         peaks       = f"{OUTPUT_DIR}/preprocessing/peaks/{{sample}}_peaks_no_blacklist_top{TOP_N_PEAKS}.bed",
          chrom_sizes = f"data/{GENOME_BUILD}.chrom.sizes"
      output:
          pred_bw = f"{OUTPUT_DIR}/pred_bw/{{sample}}_fold_{{fold}}_chrombpnet_nobias.bw",
@@ -55,7 +38,7 @@ rule contribs_bw:
      input:
          genome      = GENOME_FASTA,
          model       = f"{OUTPUT_DIR}/chrombpnet_models/{{sample}}/fold_{{fold}}/models/{{sample}}_chrombpnet_nobias.h5",
-         peaks       = f"{OUTPUT_DIR}/preprocessing/consensus_peaks/all_merged.bed",
+         peaks       = f"{OUTPUT_DIR}/preprocessing/peaks/{{sample}}_peaks_no_blacklist_top{TOP_N_PEAKS}.bed",
          chrom_sizes = f"data/{GENOME_BUILD}.chrom.sizes"
      output:
          profiles    = f"{OUTPUT_DIR}/contribs_bw/{{sample}}/{{sample}}_fold_{{fold}}.profile_scores.h5",
