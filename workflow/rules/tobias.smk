@@ -60,9 +60,9 @@ rule tobias_bindetect_profile:
         "--peaks {input.peaks} --peak_header {input.peak_header} --cores {threads} --outdir {output} {params} &>> {log}; "
 
         "mkdir -p " + os.path.join(OUTPUT_DIR, "tobias", "overview_profile") + ";"
-        "cp " + os.path.join(OUTPUT_DIR, "tobias", "TFBS", "*.txt") + " " + os.path.join(OUTPUT_DIR, "tobias", "overview_profile") + ";"	#move files to overview
-        "cp " + os.path.join(OUTPUT_DIR, "tobias", "TFBS", "*.xlsx") + " " + os.path.join(OUTPUT_DIR, "tobias", "overview_profile") + ";"
-        "cp " + os.path.join(OUTPUT_DIR, "tobias", "TFBS", "*.pdf") + " " + os.path.join(OUTPUT_DIR, "tobias", "overview_profile") + ";"
+        "cp " + os.path.join(OUTPUT_DIR, "tobias", "TFBS_profile", "*.txt") + " " + os.path.join(OUTPUT_DIR, "tobias", "overview_profile") + ";"	#move files to overview
+        "cp " + os.path.join(OUTPUT_DIR, "tobias", "TFBS_profile", "*.xlsx") + " " + os.path.join(OUTPUT_DIR, "tobias", "overview_profile") + ";"
+        "cp " + os.path.join(OUTPUT_DIR, "tobias", "TFBS_profile", "*.pdf") + " " + os.path.join(OUTPUT_DIR, "tobias", "overview_profile") + ";"
 
 rule tobias_bindetect_count:
     input: 
@@ -97,6 +97,6 @@ rule tobias_bindetect_count:
         "--peaks {input.peaks} --peak_header {input.peak_header} --cores {threads} --outdir {output} {params} &>> {log}; "
 
         "mkdir -p " + os.path.join(OUTPUT_DIR, "tobias", "overview_counts") + ";"
-        "cp " + os.path.join(OUTPUT_DIR, "tobias", "TFBS", "*.txt") + " " + os.path.join(OUTPUT_DIR, "tobias", "overview_counts") + ";"	#move files to overview
-        "cp " + os.path.join(OUTPUT_DIR, "tobias", "TFBS", "*.xlsx") + " " + os.path.join(OUTPUT_DIR, "tobias", "overview_counts") + ";"
-        "cp " + os.path.join(OUTPUT_DIR, "tobias", "TFBS", "*.pdf") + " " + os.path.join(OUTPUT_DIR, "tobias", "overview_counts") + ";"
+        "cp " + os.path.join(OUTPUT_DIR, "tobias", "TFBS_count", "*.txt") + " " + os.path.join(OUTPUT_DIR, "tobias", "overview_counts") + ";"	#move files to overview
+        "cp " + os.path.join(OUTPUT_DIR, "tobias", "TFBS_count", "*.xlsx") + " " + os.path.join(OUTPUT_DIR, "tobias", "overview_counts") + ";"
+        "cp " + os.path.join(OUTPUT_DIR, "tobias", "TFBS_count", "*.pdf") + " " + os.path.join(OUTPUT_DIR, "tobias", "overview_counts") + ";"
