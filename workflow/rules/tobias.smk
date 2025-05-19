@@ -13,7 +13,7 @@ rule merge_condition_peaks:
     container:
         config["chrombpnet_container"]
     shell:
-        "cat {input} | sort -k1,1 -k2,2n | bedtools merge -d 5 -c 4 -o distinct | sort -k4,4 > {output}"
+        "cat {input} | sort -k1,1 -k2,2n | bedtools merge -d 5 -c 4 -o distinct | sort -k4,4 | cut -f 1-4 > {output} "
 
 #create header for "peaks" given via run_info
 rule create_peaks_header: 
