@@ -47,7 +47,7 @@ rule tobias_bindetect_profile:
     conda:
          "../envs/tobias.yaml"
     log:
-        f"{OUTPUT_DIR}/logs/bindetect/log"
+        f"{OUTPUT_DIR}/logs/bindetect/profile.log"
     params:
         "--cond_names " + " ".join(SAMPLES),	#comma inserts space between elements
         config.get("bindetect", "") 
@@ -84,7 +84,7 @@ rule tobias_bindetect_count:
     conda:
          "../envs/tobias.yaml"
     log:
-        f"{OUTPUT_DIR}/logs/bindetect/log"
+        f"{OUTPUT_DIR}/logs/bindetect/counts.log"
     params:
         "--cond_names " + " ".join(SAMPLES),	#comma inserts space between elements
         config.get("bindetect", "") 
