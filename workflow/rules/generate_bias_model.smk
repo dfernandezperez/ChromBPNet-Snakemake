@@ -165,7 +165,8 @@ rule train_bias_model:
         assay  = config["chromnpnet_bias"]["assay_type"],
         extra  = config["chromnpnet_bias"]["extra_params"],
         out_dir = f"{OUTPUT_DIR}/bias_model/bias_models/fold_{{fold}}",
-        out_dir_tmp = f"{OUTPUT_DIR}/bias_model/tmp_bias_models/fold_{{fold}}"
+        out_dir_tmp = f"{OUTPUT_DIR}/bias_model/tmp_bias_models/fold_{{fold}}",
+        bias_thresh_factor = config["chromnpnet_bias"]["bias_thresh_factor"]
     resources:
         mem_mb    = RESOURCES["train_bias_model"]["mem_mb"],
         runtime   = RESOURCES["train_bias_model"]["runtime"],
@@ -194,7 +195,7 @@ rule train_bias_model:
                 -p {input.peaks} \
                 -n {input.nonpeaks} \
                 -fl {input.split} \
-                -b 0.5 \
+                -b {params.bias_thresh_factor} \
                 -o {params.out_dir_tmp} \
                 {params.extra} \
                 >> {log} 2>&1

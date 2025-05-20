@@ -40,6 +40,7 @@ macs3_top_n_peaks: 200000
 # ChromBPNet Preprocessing Parameters
 chromnpnet_bias:
   peak_blacklist_extension: 1057 # DON'T CHANGE. This is based on the ChromBPNet Input size (2114bp). Change only if the tool updates it.
+  bias_thresh_factor: 0.5 #  A threshold is applied on maximum count of non-peak region for training bias model, which is set as this threshold x min(count over peakregions). Recommended start value 0.5 for ATAC and 0.8 for DNase.
   assay_type: "ATAC" # Or "DNASE"
   extra_params: "" # Extra parameters for bias model
 
