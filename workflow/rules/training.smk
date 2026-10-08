@@ -12,8 +12,8 @@ rule train_chrombpnet:
         model   = f"{OUTPUT_DIR}/chrombpnet_models/{{sample}}/fold_{{fold}}/models/{{sample}}_chrombpnet_nobias.h5",
     params:
         prefix = f"{{sample}}",
-        assay  = config["chromnpnet_bias"]["assay_type"],
-        extra  = config["chromnpnet_bias"]["extra_params"],
+        assay  = config["chromnpnet_model"]["assay_type"],
+        extra  = config["chromnpnet_model"]["extra_params"],
         out_dir = f"{OUTPUT_DIR}/chrombpnet_models/{{sample}}/fold_{{fold}}",
         out_dir_tmp = f"{OUTPUT_DIR}/tmp_models/{{sample}}/fold_{{fold}}"
     resources:

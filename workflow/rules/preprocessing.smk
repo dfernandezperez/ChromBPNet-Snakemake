@@ -45,7 +45,7 @@ rule filter_peaks_blacklist:
         filtered_peaks = f"{OUTPUT_DIR}/preprocessing/peaks/{{sample}}_peaks_no_blacklist.bed"
     params:
         slop_bp = config["chromnpnet_bias"]["peak_blacklist_extension"],
-        slop_tmp = lambda w: f"{OUTPUT_DIR}/preprocessing/peaks/{{w.sample}}_slop_tmp.bed" # Use a temporary file for the slopped blacklist
+        slop_tmp = f"{OUTPUT_DIR}/preprocessing/peaks/{{sample}}_slop_tmp.bed" # Use a temporary file for the slopped blacklist
     resources:
         mem_mb  = RESOURCES["filter_peaks_blacklist"]["mem_mb"],
         runtime = RESOURCES["filter_peaks_blacklist"]["runtime"]

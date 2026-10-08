@@ -3,7 +3,7 @@ rule pred_bw:
          genome      = GENOME_FASTA,
          model       = f"{OUTPUT_DIR}/chrombpnet_models/{{sample}}/fold_{{fold}}/models/{{sample}}_chrombpnet_nobias.h5",
          peaks       = f"{OUTPUT_DIR}/preprocessing/peaks/{{sample}}_peaks_no_blacklist_top{TOP_N_PEAKS}.bed",
-         chrom_sizes = f"data/{GENOME_BUILD}.chrom.sizes"
+         chrom_sizes = rules.get_chrom_sizes.output.chrom_sizes
      output:
          pred_bw = f"{OUTPUT_DIR}/pred_bw/{{sample}}_fold_{{fold}}_chrombpnet_nobias.bw",
      params:
@@ -39,7 +39,7 @@ rule contribs_bw:
          genome      = GENOME_FASTA,
          model       = f"{OUTPUT_DIR}/chrombpnet_models/{{sample}}/fold_{{fold}}/models/{{sample}}_chrombpnet_nobias.h5",
          peaks       = f"{OUTPUT_DIR}/preprocessing/peaks/{{sample}}_peaks_no_blacklist_top{TOP_N_PEAKS}.bed",
-         chrom_sizes = f"data/{GENOME_BUILD}.chrom.sizes"
+         chrom_sizes = rules.get_chrom_sizes.output.chrom_sizes
      output:
          out_bed     = f"{OUTPUT_DIR}/contribs_bw/{{sample}}/{{sample}}_fold_{{fold}}.interpreted_regions.bed",
          profiles    = f"{OUTPUT_DIR}/contribs_bw/{{sample}}/{{sample}}_fold_{{fold}}.profile_scores.h5",
