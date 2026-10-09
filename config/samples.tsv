@@ -1,5 +1,6 @@
 SampleName	BamPath	UseForBiasModel
-FetalTransplant	/home/dfernandezp/atac_bam_files/Fetal_transpl_REP1.mLb.clN.sorted.bam;/home/dfernandezp/atac_bam_files/Fetal_transpl_REP2.mLb.clN.sorted.bam	True
-FetalNaive	/home/dfernandezp/atac_bam_files/Fetal_Naive_REP1.mLb.clN.sorted.bam;/home/dfernandezp/atac_bam_files/Fetal_Naive_REP2.mLb.clN.sorted.bam;/home/dfernandezp/atac_bam_files/Fetal_Naive_REP3.mLb.clN.sorted.bam	True
-AdultNaive	/home/dfernandezp/atac_bam_files/Adult_Naive_REP1.mLb.clN.sorted.bam;/home/dfernandezp/atac_bam_files/Adult_Naive_REP2.mLb.clN.sorted.bam;/home/dfernandezp/atac_bam_files/Adult_Naive_REP3.mLb.clN.sorted.bam	True
-AdultTransplant	/home/dfernandezp/atac_bam_files/Adult_transpl_REP1.mLb.clN.sorted.bam;/home/dfernandezp/atac_bam_files/Adult_transpl_REP2.mLb.clN.sorted.bam;/home/dfernandezp/atac_bam_files/Adult_transpl_REP3.mLb.clN.sorted.bam;/home/dfernandezp/atac_bam_files/Adult_transpl_REP4.mLb.clN.sorted.bam	True
+TdTNeg-rep2	/home/dfernandezp/ATACseq_v2_Tppp3_BAM/TdTomatoNeg_REP2.mLb.clN.sorted.bam	True
+TdTNeg-rep3	/home/dfernandezp/ATACseq_v2_Tppp3_BAM/TdTomatoNeg_REP3.mLb.clN.sorted.bam	True
+TdTNeg-rep4	/home/dfernandezp/ATACseq_v2_Tppp3_BAM/TdTomatoNeg_REP4.mLb.clN.sorted.bam	True
+TdTPos-rep2	/home/dfernandezp/ATACseq_v2_Tppp3_BAM/TdTomatoPos_REP2.mLb.clN.sorted.bam	True
+TdTPos-rep6	/home/dfernandezp/ATACseq_v2_Tppp3_BAM/TdTomatoPos_REP6.mLb.clN.sorted.bam	True

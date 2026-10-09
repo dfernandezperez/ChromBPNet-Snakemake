@@ -20,6 +20,10 @@ get_motif_db:
   mem_mb: 1000
   retries: 3
 
+make_chr_splits:
+  runtime: 10
+  mem_mb: 2000
+
 download_and_index_fasta:
   runtime: 60
   mem_mb: 10000
@@ -89,6 +93,25 @@ contribs_bw:
   cpu: 2
   gres: gpu:rtx3090:1
   slurm_partition: irb_gpu_3090
+  retries: 0
+
+chrombpnet_footprints:
+  runtime: 600
+  mem_mb: 40000
+  cpu: 2
+  gres: gpu:rtx3090:1
+  slurm_partition: irb_gpu_3090
+  retries: 0
+
+# Fold averaging loads all folds' contribution h5 files (~3.4 GB each for 200k peaks)
+average_pred_bw:
+  runtime: 120
+  mem_mb: 20000
+  retries: 0
+
+average_contribs:
+  runtime: 240
+  mem_mb: 60000
   retries: 0
 
 modisco_tf:

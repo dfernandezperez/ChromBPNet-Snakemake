@@ -1,14 +1,14 @@
 rule pred_bw:
      input:
          genome      = GENOME_FASTA,
-         model       = f"{OUTPUT_DIR}/chrombpnet_models/{{sample}}/fold_{{fold}}/models/{{sample}}_chrombpnet_nobias.h5",
-         peaks       = f"{OUTPUT_DIR}/preprocessing/peaks/{{sample}}_peaks_no_blacklist_top{TOP_N_PEAKS}.bed",
+         model       = "chrombpnet_models/{sample}/fold_{fold}/models/{sample}_chrombpnet_nobias.h5",
+         peaks       = f"preprocessing/peaks/{{sample}}_peaks_no_blacklist_top{TOP_N_PEAKS}.bed",
          chrom_sizes = rules.get_chrom_sizes.output.chrom_sizes
      output:
-         pred_bw = f"{OUTPUT_DIR}/pred_bw/{{sample}}_fold_{{fold}}_chrombpnet_nobias.bw",
+         pred_bw = "pred_bw/{sample}_fold_{fold}_chrombpnet_nobias.bw",
      params:
-         out_fold = f"{OUTPUT_DIR}/pred_bw",
-         prefix   = f"{{sample}}_fold_{{fold}}"
+         out_fold = "pred_bw",
+         prefix   = "{sample}_fold_{fold}"
      resources:
         mem_mb    = RESOURCES["pred_bw"]["mem_mb"],
         cpu       = RESOURCES["pred_bw"]["cpu"],
@@ -22,7 +22,7 @@ rule pred_bw:
      container:
          config["chrombpnet_container"]
      log:
-         f"{OUTPUT_DIR}/logs/pred_bw/{{sample}}_fold_{{fold}}.log"
+         "logs/pred_bw/{sample}_fold_{fold}.log"
      shell:
         """
         mkdir -p {params.out_fold}
@@ -37,18 +37,18 @@ rule pred_bw:
 rule contribs_bw:
      input:
          genome      = GENOME_FASTA,
-         model       = f"{OUTPUT_DIR}/chrombpnet_models/{{sample}}/fold_{{fold}}/models/{{sample}}_chrombpnet_nobias.h5",
-         peaks       = f"{OUTPUT_DIR}/preprocessing/peaks/{{sample}}_peaks_no_blacklist_top{TOP_N_PEAKS}.bed",
+         model       = "chrombpnet_models/{sample}/fold_{fold}/models/{sample}_chrombpnet_nobias.h5",
+         peaks       = f"preprocessing/peaks/{{sample}}_peaks_no_blacklist_top{TOP_N_PEAKS}.bed",
          chrom_sizes = rules.get_chrom_sizes.output.chrom_sizes
      output:
-         out_bed     = f"{OUTPUT_DIR}/contribs_bw/{{sample}}/{{sample}}_fold_{{fold}}.interpreted_regions.bed",
-         profiles    = f"{OUTPUT_DIR}/contribs_bw/{{sample}}/{{sample}}_fold_{{fold}}.profile_scores.h5",
-         counts      = f"{OUTPUT_DIR}/contribs_bw/{{sample}}/{{sample}}_fold_{{fold}}.counts_scores.h5",
-         profiles_bw = f"{OUTPUT_DIR}/contribs_bw/{{sample}}/{{sample}}_fold_{{fold}}.profile_scores.bw",
-         counts_bw   = f"{OUTPUT_DIR}/contribs_bw/{{sample}}/{{sample}}_fold_{{fold}}.counts_scores.bw"
+         out_bed     = "contribs_bw/{sample}/{sample}_fold_{fold}.interpreted_regions.bed",
+         profiles    = "contribs_bw/{sample}/{sample}_fold_{fold}.profile_scores.h5",
+         counts      = "contribs_bw/{sample}/{sample}_fold_{fold}.counts_scores.h5",
+         profiles_bw = "contribs_bw/{sample}/{sample}_fold_{fold}.profile_scores.bw",
+         counts_bw   = "contribs_bw/{sample}/{sample}_fold_{fold}.counts_scores.bw"
      params:
-         out_fold = f"{OUTPUT_DIR}/contribs_bw/{{sample}}",
-         prefix   = f"{{sample}}_fold_{{fold}}"
+         out_fold = "contribs_bw/{sample}",
+         prefix   = "{sample}_fold_{fold}"
      resources:
         mem_mb    = RESOURCES["contribs_bw"]["mem_mb"],
         cpu       = RESOURCES["contribs_bw"]["cpu"],
@@ -62,7 +62,7 @@ rule contribs_bw:
      container:
          config["chrombpnet_container"]
      log:
-         f"{OUTPUT_DIR}/logs/contribs_bw/{{sample}}_fold_{{fold}}.log"
+         "logs/contribs_bw/{sample}_fold_{fold}.log"
      shell:
         """
         mkdir -p {params.out_fold}
@@ -74,14 +74,16 @@ rule contribs_bw:
         -op {params.out_fold}/{params.prefix} > {log} 2>&1
         """
 
+# Run on the contribution scores averaged across folds (see fold_average.smk)
 rule modisco_tf:
      input:
-         profile_scores = f"{OUTPUT_DIR}/contribs_bw/{{sample}}/{{sample}}_fold_{{fold}}.profile_scores.h5"
+         profile_scores = "contribs_bw/{sample}/{sample}_mean.profile_scores.h5"
      output:
-         h5 = f"{OUTPUT_DIR}/modisco_tf/{{sample}}/{{sample}}_fold_{{fold}}_modisco.h5",
-         report = directory(f"{OUTPUT_DIR}/modisco_tf/{{sample}}/{{sample}}_fold_{{fold}}_reports")
+         h5 = "modisco_tf/{sample}/{sample}_modisco.h5",
+         report = directory("modisco_tf/{sample}/{sample}_reports")
      params:
          n_seqlets = config["modisco_tf"]["seqlets"],
+         window    = config["modisco_tf"]["window"],
          meme_db   = config["modisco_tf"]["meme_db"],
          tomtom_n_match  = config["modisco_tf"]["tomtom_n_match"]
      resources:
@@ -95,7 +97,7 @@ rule modisco_tf:
      container:
          config["chrombpnet_container"]
      log:
-         f"{OUTPUT_DIR}/logs/modisco_tf/{{sample}}_fold_{{fold}}.log"
+         "logs/modisco_tf/{sample}.log"
      shell:
         """
         # Run modisco motif discovery
@@ -103,6 +105,7 @@ rule modisco_tf:
         modisco motifs \
         -i {input.profile_scores} \
         -n {params.n_seqlets} \
+        -w {params.window} \
         -o {output.h5} >> {log} 2>&1
         
         # Generate modisco report
@@ -113,4 +116,43 @@ rule modisco_tf:
         -n {params.tomtom_n_match} \
         -o {output.report} \
         -s {output.report} >> {log} 2>&1
+        """
+
+# Marginal footprinting: motifs inserted into the non-peak regions of the fold's test chromosomes
+rule chrombpnet_footprints:
+     input:
+         genome   = GENOME_FASTA,
+         model    = "chrombpnet_models/{sample}/fold_{fold}/models/{sample}_chrombpnet_nobias.h5",
+         nonpeaks = "preprocessing/nonpeaks/{sample}_fold_{fold}_negatives.bed",
+         split    = FOLD_JSON
+     output:
+         footprints = "footprints/{sample}/{sample}_fold_{fold}_footprints.h5"
+     params:
+         out_fold = "footprints/{sample}",
+         prefix   = "{sample}_fold_{fold}",
+         motifs   = config["footprints"]["motifs_to_pwm"]
+     resources:
+        mem_mb    = RESOURCES["chrombpnet_footprints"]["mem_mb"],
+        cpu       = RESOURCES["chrombpnet_footprints"]["cpu"],
+        runtime   = RESOURCES["chrombpnet_footprints"]["runtime"],
+        gres      = RESOURCES["chrombpnet_footprints"]["gres"],
+        slurm_partition = RESOURCES["chrombpnet_footprints"]["slurm_partition"]
+     threads:
+        RESOURCES["chrombpnet_footprints"]["cpu"]
+     retries: 
+        RESOURCES["chrombpnet_footprints"]["retries"]
+     container:
+         config["chrombpnet_container"]
+     log:
+         "logs/footprints/{sample}_fold_{fold}.log"
+     shell:
+        """
+        mkdir -p {params.out_fold}
+        chrombpnet footprints \
+        -m {input.model} \
+        -r {input.nonpeaks} \
+        -g {input.genome} \
+        -fl {input.split} \
+        -pwm_f {params.motifs} \
+        -op {params.out_fold}/{params.prefix} > {log} 2>&1
         """

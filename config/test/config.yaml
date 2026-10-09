@@ -1,0 +1,22 @@
+# Small test run, used on top of config/config.yaml:
+#   sbatch slurm_run_pipeline.slurm --configfile config/test/config.yaml
+sample_sheet: config/test/samples.tsv
+output_dir: "/scratch/qscd/dfernandezp/chrombpnetTest"
+folds: ["0", "1"]
+splits_dir: "" # Exercise fold generation with `chrombpnet prep splits`
+macs3_top_n_peaks: 20000
+
+chromnpnet_bias:
+  peak_blacklist_extension: 1057
+  bias_thresh_factor: 0.5
+  assay_type: "ATAC"
+  extra_params: "-e 2"
+chromnpnet_model:
+  assay_type: "ATAC"
+  extra_params: "-e 2"
+
+modisco_tf:
+  meme_db: "/scratch/chrombpnet/chrombpnet/data/motifs.meme.txt"
+  seqlets: 20000
+  tomtom_n_match: 3
+  window: 500

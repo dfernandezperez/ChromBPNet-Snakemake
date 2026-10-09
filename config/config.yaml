@@ -3,7 +3,10 @@ resources: config/resources.yaml
 sample_sheet: config/samples.tsv
 
 # --- General Settings ---
-output_dir: "results"  # Main output directory
+# Main output directory. Everything that is not pipeline code/configuration is stored here:
+# results, logs, downloaded reference data (data/), singularity images, conda envs and the
+# snakemake metadata (.snakemake/). Use a location with enough space (e.g. /scratch).
+output_dir: "/scratch/qscd/dfernandezp/chrombpnet"
 host_tmp_dir: "tmpdir" # Define the HOST path for temporary files. It will be created inside the out_dir path
 
 # --- Reference Genome & Annotations ---
@@ -20,8 +23,18 @@ chrom_sizes_url: "http://hgdownload.soe.ucsc.edu/goldenPath/{genome_build}/bigZi
 motif_file_url: "https://jaspar.elixir.no/download/data/2024/CORE/JASPAR2024_CORE_vertebrates_non-redundant_pfms_jaspar.txt" # has to be in JASPAR or MEME format
 
 # --- Chromosome Splits ---
-# Directory containing fold_0.json, fold_1.json, ..., fold_4.json
+# Directory containing fold_0.json, fold_1.json, ..., fold_4.json (pre-made for mm10).
+# Set to "" to generate the fold files with `chrombpnet prep splits` from `chr_splits` below
+# (needed for other genomes).
 splits_dir: "config/chr_splits"
+chr_splits:
+  canonical_chroms_regex: "^chr([0-9]+|X|Y)$" # Chromosomes kept for train/valid/test
+  folds: # test/valid chromosomes per fold; all other canonical chromosomes are used for training
+    0: {test: [chr1, chr3, chr6], valid: [chr8, chr19]}
+    1: {test: [chr2, chr8, chr9, chr16], valid: [chr12, chr17]}
+    2: {test: [chr4, chr11, chr12, chr15, chrY], valid: [chr7, chr18]}
+    3: {test: [chr5, chr10, chr14, chr18, chr19, chr13], valid: [chr6, chr17]}
+    4: {test: [chr7, chr13, chr17, chr19, chr15, chrX], valid: [chr10, chr18]}
 # folds: ["0", "1", "2", "3", "4"] # Corresponds to filenames like fold_0.json
 folds: ["0"] # Corresponds to filenames like fold_0.json
 
@@ -55,6 +68,13 @@ modisco_tf:
   meme_db: "/scratch/chrombpnet/chrombpnet/data/motifs.meme.txt"
   seqlets: 200000 # Number of max seqlets
   tomtom_n_match: 3 # Number of motifs to match by TOMTOM
+  window: 500 # Window (bp) around the peak center used for seqlets (ChromBPNet uses 500)
+
+# Marginal footprinting of motifs inserted into non-peak regions (chrombpnet footprints).
+# TSV without header: motif name and the motif sequence to insert. The default file is
+# located in the singularity image of chromBPnet (also motif_to_pwm.ATAC.tsv / .DNASE.tsv for Tn5/DNase bias motifs).
+footprints:
+  motifs_to_pwm: "/scratch/chrombpnet/chrombpnet/data/motif_to_pwm.TF.tsv"
 
 # Bindetect extra parameters
 bindetect: ""

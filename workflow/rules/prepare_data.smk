@@ -14,7 +14,7 @@ rule download_and_index_fasta:
     retries:
         RESOURCES["download_and_index_fasta"]["retries"]
     log:
-        f"{OUTPUT_DIR}/logs/data_prep/download_fasta_{config['genome_build']}.log"
+        f"logs/data_prep/download_fasta_{config['genome_build']}.log"
     shell:
         """
         echo "Attempting to download FASTA from {params.url}" > {log}
@@ -40,7 +40,7 @@ rule get_chrom_sizes:
     retries:
         RESOURCES["get_chrom_sizes"]["retries"]
     log:
-        f"{OUTPUT_DIR}/logs/data_prep/get_chrom_sizes_{config['genome_build']}.log"
+        f"logs/data_prep/get_chrom_sizes_{config['genome_build']}.log"
     shell:
         """
         wget -O {output.chrom_sizes} {params.url} 2> {log}
@@ -57,7 +57,7 @@ rule get_blacklist:
     retries:
         RESOURCES["get_blacklist"]["retries"]
     log:
-        f"{OUTPUT_DIR}/logs/data_prep/get_blacklist_{config['genome_build']}.log"
+        f"logs/data_prep/get_blacklist_{config['genome_build']}.log"
     shell:
         """
         gunzip -c {input} > {output} 2> {log}
@@ -65,7 +65,7 @@ rule get_blacklist:
 
 rule get_motif_db:
     output:
-        motif_db=f"data/motif_db.txt"
+        motif_db="data/motif_db.txt"
     params:
         url=config["motif_file_url"]
     resources:
@@ -74,7 +74,7 @@ rule get_motif_db:
     retries:
         RESOURCES["get_motif_db"]["retries"]
     log:
-        f"{OUTPUT_DIR}/logs/data_prep/get_motif_db.log"
+        "logs/data_prep/get_motif_db.log"
     shell:
         """
         wget -O {output.motif_db} {params.url} 2> {log}
@@ -89,12 +89,12 @@ rule merge_sort_index_bams:
     input:
         bams = get_bams_for_sample
     output:
-        bam = f"{OUTPUT_DIR}/preprocessing/bams/{{sample}}.bam",
-        bai = f"{OUTPUT_DIR}/preprocessing/bams/{{sample}}.bam.bai"
+        bam = "preprocessing/bams/{sample}.bam",
+        bai = "preprocessing/bams/{sample}.bam.bai"
     params:
         # Calculate the number of input bams here
         num_bams      = lambda w, input: len(input.bams),
-        merged_unsort = f"{OUTPUT_DIR}/preprocessing/bams/{{sample}}_merged_unsorted.bam"
+        merged_unsort = "preprocessing/bams/{sample}_merged_unsorted.bam"
     resources:
         mem_mb  = RESOURCES["merge_sort_index_bams"]["mem_mb"],
         runtime = RESOURCES["merge_sort_index_bams"]["runtime"]
@@ -103,7 +103,7 @@ rule merge_sort_index_bams:
     container:
         config["chrombpnet_container"]
     log:
-        f"{OUTPUT_DIR}/logs/bams/{{sample}}_merge_sort_index.log"
+        "logs/bams/{sample}_merge_sort_index.log"
     shell:
         # Create the output directory first
         """
@@ -125,3 +125,46 @@ rule merge_sort_index_bams:
         samtools index -@ {threads} {output.bam} 2>> {log}
         echo "BAM processing finished." >> {log}
         """
+# --- Chromosome splits (only when no pre-made `splits_dir` is given) ---
+if SPLITS_DIR == "":
+    rule get_canonical_chrom_sizes:
+        # `chrombpnet prep splits` puts every chromosome of the chrom sizes file not used
+        # for test/valid into train, so keep only canonical chromosomes
+        input:
+            chrom_sizes = rules.get_chrom_sizes.output.chrom_sizes
+        output:
+            chrom_sizes = f"data/{GENOME_BUILD}.canonical.chrom.sizes"
+        params:
+            regex = config["chr_splits"]["canonical_chroms_regex"]
+        run:
+            pattern = re.compile(params.regex)
+            with open(input.chrom_sizes) as f_in, open(output.chrom_sizes, "w") as f_out:
+                for line in f_in:
+                    if pattern.match(line.split("\t")[0]):
+                        f_out.write(line)
+
+    rule make_chr_splits:
+        input:
+            chrom_sizes = rules.get_canonical_chrom_sizes.output.chrom_sizes
+        output:
+            fold_json = "chr_splits/fold_{fold}.json"
+        params:
+            output_prefix = "chr_splits/fold_{fold}",
+            test_chroms   = lambda w: " ".join(config["chr_splits"]["folds"][int(w.fold)]["test"]),
+            valid_chroms  = lambda w: " ".join(config["chr_splits"]["folds"][int(w.fold)]["valid"])
+        resources:
+            mem_mb  = RESOURCES["make_chr_splits"]["mem_mb"],
+            runtime = RESOURCES["make_chr_splits"]["runtime"]
+        container:
+            config["chrombpnet_container"]
+        log:
+            "logs/data_prep/make_chr_splits_fold_{fold}.log"
+        shell:
+            """
+            chrombpnet prep splits \
+                -c {input.chrom_sizes} \
+                -tcr {params.test_chroms} \
+                -vcr {params.valid_chroms} \
+                -op {params.output_prefix} \
+                > {log} 2>&1
+            """

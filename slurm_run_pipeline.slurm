@@ -9,5 +9,6 @@
 eval "$(conda shell.bash hook)"
 conda activate snakemake
 
-snakemake -j 1 --unlock --cleanup-shadow
+# Pass the same arguments (e.g. --configfile) so the right output_dir is unlocked
+snakemake -j 1 --unlock --cleanup-shadow "$@"
 snakemake --profile config/snakemake_profile/slurm "$@"

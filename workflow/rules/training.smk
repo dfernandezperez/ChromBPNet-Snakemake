@@ -2,20 +2,21 @@ rule train_chrombpnet:
     input:
         genome      = GENOME_FASTA,
         chrom_sizes = rules.get_chrom_sizes.output.chrom_sizes,
-        split       = os.path.join(SPLITS_DIR, "fold_{fold}.json"),
-        bam         = f"{OUTPUT_DIR}/preprocessing/bams/{{sample}}.bam",
-        nonpeaks    = f"{OUTPUT_DIR}/preprocessing/nonpeaks/{{sample}}_fold_{{fold}}_negatives.bed",
-        peaks       = f"{OUTPUT_DIR}/preprocessing/peaks/{{sample}}_peaks_no_blacklist_top{TOP_N_PEAKS}.bed",
-        bias_model  = f"{OUTPUT_DIR}/bias_model/bias_models/fold_{{fold}}/models/bias.h5"
+        split       = FOLD_JSON,
+        bam         = "preprocessing/bams/{sample}.bam",
+        nonpeaks    = "preprocessing/nonpeaks/{sample}_fold_{fold}_negatives.bed",
+        peaks       = f"preprocessing/peaks/{{sample}}_peaks_no_blacklist_top{TOP_N_PEAKS}.bed",
+        bias_model  = "bias_model/bias_models/fold_{fold}/models/bias.h5"
     output:
-        flag    = f"{OUTPUT_DIR}/chrombpnet_models/{{sample}}/fold_{{fold}}/complete.flag", # Add flag for rule completion
-        model   = f"{OUTPUT_DIR}/chrombpnet_models/{{sample}}/fold_{{fold}}/models/{{sample}}_chrombpnet_nobias.h5",
+        flag    = "chrombpnet_models/{sample}/fold_{fold}/complete.flag", # Add flag for rule completion
+        model   = "chrombpnet_models/{sample}/fold_{fold}/models/{sample}_chrombpnet_nobias.h5",
+        report  = "chrombpnet_models/{sample}/fold_{fold}/evaluation/{sample}_overall_report.html",
     params:
-        prefix = f"{{sample}}",
+        prefix = "{sample}",
         assay  = config["chromnpnet_model"]["assay_type"],
         extra  = config["chromnpnet_model"]["extra_params"],
-        out_dir = f"{OUTPUT_DIR}/chrombpnet_models/{{sample}}/fold_{{fold}}",
-        out_dir_tmp = f"{OUTPUT_DIR}/tmp_models/{{sample}}/fold_{{fold}}"
+        out_dir = "chrombpnet_models/{sample}/fold_{fold}",
+        out_dir_tmp = "tmp_models/{sample}/fold_{fold}"
     resources:
         mem_mb    = RESOURCES["train_chrombpnet"]["mem_mb"],
         cpu       = RESOURCES["train_chrombpnet"]["cpu"],
@@ -29,7 +30,7 @@ rule train_chrombpnet:
     container:
         config["chrombpnet_container"]
     log:
-        f"{OUTPUT_DIR}/logs/train_chrombpnet/{{sample}}_fold_{{fold}}.log"
+        "logs/train_chrombpnet/{sample}_fold_{fold}.log"
     shell:
         """
         # Delete tmpand output folder (in case exists from a failed run) 
@@ -61,7 +62,7 @@ rule train_chrombpnet:
 rule gpu_test_rule:
     output:
         # Create a simple flag file to mark completion
-        gpu_check_flag=touch(f"{OUTPUT_DIR}/logs/gpu_test/tensorflow_gpu_check_successful.flag")
+        gpu_check_flag=touch("logs/gpu_test/tensorflow_gpu_check_successful.flag")
     resources:
         mem_mb    = RESOURCES["train_chrombpnet"]["mem_mb"],
         cpu       = RESOURCES["train_chrombpnet"]["cpu"],
@@ -72,6 +73,6 @@ rule gpu_test_rule:
         config["chrombpnet_container"] # Use the NVIDIA container
     log:
         # Log file will contain nvidia-smi output
-        f"{OUTPUT_DIR}/logs/gpu_test/nvidia_smi_output.log"
+        "logs/gpu_test/nvidia_smi_output.log"
     script:
         "../scripts/test_gpu_chrombpnet.py"

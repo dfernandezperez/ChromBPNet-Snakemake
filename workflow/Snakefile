@@ -1,14 +1,24 @@
 import os
+import re
 import glob
 import yaml
 import pandas as pd
 
+# Pipeline repository. Relative paths in the configuration (sample sheet, BAMs, blacklist, splits...)
+# are relative to it: the workflow runs inside `output_dir` (see `workdir` below) and the cluster jobs
+# re-read this Snakefile from there, so they cannot be resolved against the current directory.
+REPO_DIR = os.path.abspath(os.path.join(workflow.basedir, ".."))
+
+def repo_path(path):
+    return path if os.path.isabs(path) else os.path.join(REPO_DIR, path)
+
 # Load configuration
-configfile: "config/config.yaml"
+configfile: repo_path("config/config.yaml")
 
 # --- Read Sample Sheet and Prepare Sample Info ---
-SAMPLE_INFO_DF = pd.read_csv(config["sample_sheet"], sep='\t')
+SAMPLE_INFO_DF = pd.read_csv(repo_path(config["sample_sheet"]), sep='\t')
 SAMPLE_INFO_DF.set_index("SampleName", drop=False, inplace=True)
+SAMPLE_INFO_DF["BamPath"] = SAMPLE_INFO_DF["BamPath"].apply(lambda paths: ";".join(repo_path(p) for p in paths.split(";")))
 SAMPLES = SAMPLE_INFO_DF.index.tolist() # All unique sample names
 
 # Get samples and ALL their constituent BAMs for bias model
@@ -22,18 +32,28 @@ if not ALL_BIAS_BAMS:
     # Consider raising an error if bias models are essential for the workflow
 
 # --- Helper Variables ---
-RESOURCES    = yaml.load(open(config['resources'], 'r'), Loader=yaml.FullLoader)
-OUTPUT_DIR   = config["output_dir"]
+RESOURCES    = yaml.load(open(repo_path(config['resources']), 'r'), Loader=yaml.FullLoader)
+OUTPUT_DIR   = repo_path(config["output_dir"])
 GENOME_BUILD = config["genome_build"]
-GENOME_FASTA = f"data/{GENOME_BUILD}.fa"
-BLACKLIST    = f"config/Blacklist/lists/{GENOME_BUILD}-blacklist.v2.bed.gz" if config["custom_blacklist"] == "" else config["custom_blacklist"]
-SPLITS_DIR   = config["splits_dir"]
+GENOME_FASTA = f"data/{GENOME_BUILD}.fa" # Relative paths like data/ are inside OUTPUT_DIR (workdir)
+BLACKLIST    = repo_path(f"config/Blacklist/lists/{GENOME_BUILD}-blacklist.v2.bed.gz" if config["custom_blacklist"] == "" else config["custom_blacklist"])
+SPLITS_DIR   = repo_path(config["splits_dir"]) if config["splits_dir"] != "" else ""
 FOLDS        = config["folds"]
 TOP_N_PEAKS  = config["macs3_top_n_peaks"]
+# Fold json files: pre-made ones from `splits_dir`, or generated with `chrombpnet prep splits`
+# from `chr_splits` in the config when `splits_dir` is empty (see rule make_chr_splits)
+FOLD_JSON    = os.path.join(SPLITS_DIR, "fold_{fold}.json") if SPLITS_DIR != "" else "chr_splits/fold_{fold}.json"
+
+# Avoid ambiguity between per-fold ({sample}_fold_{fold}) and fold-averaged ({sample}_mean) outputs
+wildcard_constraints:
+    sample = "|".join(map(re.escape, SAMPLES)),
+    fold   = r"\d+"
 
 # --- Portable TMPDIR Configuration ---
 # Get the HOST path from the config
 HOST_TMP_DIR = f"{OUTPUT_DIR}/{config["host_tmp_dir"]}"
+# Must exist before singularity uses it (e.g. to pull images on a fresh output dir)
+os.makedirs(HOST_TMP_DIR, exist_ok=True)
 # Set the HOST environment variable that Snakemake will pass through.
 # This ensures TMPDIR inside the container points to our mounted directory.
 os.environ["SINGULARITY_TMPDIR"] = HOST_TMP_DIR
@@ -41,6 +61,26 @@ os.environ["TMPDIR"] = HOST_TMP_DIR
 # This tells Snakemake which HOST environment variables to pass into the container.
 # Singularity automatically strips the "SINGULARITY_" prefix.
 envvars: "SINGULARITY_TMPDIR","TMPDIR"
+# Cache of image layers used when pulling the containers (defaults to ~/.singularity/cache)
+os.environ["SINGULARITY_CACHEDIR"] = os.environ["APPTAINER_CACHEDIR"] = f"{OUTPUT_DIR}/.singularity_cache"
+# Package cache used when creating the conda environments (defaults to the conda installation in home)
+os.environ["CONDA_PKGS_DIRS"] = f"{OUTPUT_DIR}/.conda_pkgs"
+# Strict channel priority, as recommended by snakemake: much faster and more robust env solving
+os.environ["CONDA_CHANNEL_PRIORITY"] = "strict"
+
+# --- Run everything inside the output directory ---
+# Snakemake's own files (.snakemake/: singularity images, conda envs, metadata, slurm logs, shadow dirs),
+# downloaded reference data (data/) and results are all stored in OUTPUT_DIR. Every path from the
+# configuration must be made absolute with repo_path() above this line.
+workdir: OUTPUT_DIR
+
+# /scratch purges files whose modification time is older than ~60 days. Files installed by conda keep
+# the (often old) timestamps of the packages, so parts of the conda envs and package cache are deleted
+# soon after creation, breaking them. Refresh their timestamps once per run, after snakemake has created
+# the envs and before any job starts (onstart only runs in the main process, and not in dry runs).
+# Envs left unused for > 60 days can still break: then delete .snakemake/conda and .conda_pkgs.
+onstart:
+    shell("find .snakemake/conda .conda_pkgs -exec touch -h -c {{}} + 2>/dev/null || true")
 
 # --- Load snakemake rules ---
 include: "rules/prepare_data.smk"
@@ -48,14 +88,19 @@ include: "rules/generate_bias_model.smk"
 include: "rules/preprocessing.smk"
 include: "rules/training.smk"
 include: "rules/prediction.smk"
+include: "rules/fold_average.smk"
 include: "rules/tobias.smk"
 
 # --- Target Rule: Define final desired outputs ---
 rule all:
     input:
-        # f"{OUTPUT_DIR}/logs/gpu_test/tensorflow_gpu_check_successful.flag",
-        expand(f"{OUTPUT_DIR}/chrombpnet_models/{{sample}}/fold_{{fold}}/models/{{sample}}_chrombpnet_nobias.h5", sample = SAMPLES, fold = FOLDS),
-        expand(f"{OUTPUT_DIR}/pred_bw/{{sample}}_fold_{{fold}}_chrombpnet_nobias.bw", sample = SAMPLES, fold = FOLDS),
-        expand(f"{OUTPUT_DIR}/modisco_tf/{{sample}}/{{sample}}_fold_{{fold}}_modisco.h5", sample = SAMPLES, fold = FOLDS),
-        f"{OUTPUT_DIR}/tobias/TFBS_count",
-        f"{OUTPUT_DIR}/tobias/TFBS_profile",
+        # "logs/gpu_test/tensorflow_gpu_check_successful.flag",
+        expand("chrombpnet_models/{sample}/fold_{fold}/models/{sample}_chrombpnet_nobias.h5", sample = SAMPLES, fold = FOLDS),
+        expand("chrombpnet_models/{sample}/fold_{fold}/evaluation/{sample}_overall_report.html", sample = SAMPLES, fold = FOLDS),
+        expand("bias_model/bias_models/fold_{fold}/evaluation/overall_report.html", fold = FOLDS),
+        expand("pred_bw/{sample}_fold_{fold}_chrombpnet_nobias.bw", sample = SAMPLES, fold = FOLDS),
+        expand("pred_bw/{sample}_mean_chrombpnet_nobias.bw", sample = SAMPLES),
+        expand("footprints/{sample}/{sample}_fold_{fold}_footprints.h5", sample = SAMPLES, fold = FOLDS),
+        expand("modisco_tf/{sample}/{sample}_modisco.h5", sample = SAMPLES),
+        "tobias/TFBS_count",
+        "tobias/TFBS_profile",

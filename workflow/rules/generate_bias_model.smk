@@ -2,12 +2,12 @@ rule merge_sort_index_bias_bams:
     input:
         bams = ALL_BIAS_BAMS
     output:
-        bam = f"{OUTPUT_DIR}/bias_model/preprocessing/bams/bias_pool.bam",
-        bai = f"{OUTPUT_DIR}/bias_model/preprocessing/bams/bias_pool.bam.bai"
+        bam = "bias_model/preprocessing/bams/bias_pool.bam",
+        bai = "bias_model/preprocessing/bams/bias_pool.bam.bai"
     params:
         # Calculate the number of input bams here
         num_bams      = lambda w, input: len(input.bams),
-        merged_unsort = f"{OUTPUT_DIR}/bias_model/preprocessing/bams/bias_merged_unsorted.bam"
+        merged_unsort = "bias_model/preprocessing/bams/bias_merged_unsorted.bam"
     resources:
         mem_mb  = RESOURCES["merge_sort_index_bias_bams"]["mem_mb"],
         runtime = RESOURCES["merge_sort_index_bias_bams"]["runtime"]
@@ -16,7 +16,7 @@ rule merge_sort_index_bias_bams:
     container:
         config["chrombpnet_container"]
     log:
-        f"{OUTPUT_DIR}/logs/bams/bias_merge_sort_index.log"
+        "logs/bams/bias_merge_sort_index.log"
     shell:
         """
         if [ {params.num_bams} -eq 1 ]; then
@@ -41,12 +41,12 @@ rule merge_sort_index_bias_bams:
 # --- Preprocessing Rules (for bias model) ---
 rule macs3_bias_peak_calling:
     input:
-        bam = f"{OUTPUT_DIR}/bias_model/preprocessing/bams/bias_pool.bam"
+        bam = "bias_model/preprocessing/bams/bias_pool.bam"
     output:
-        peaks   = f"{OUTPUT_DIR}/bias_model/preprocessing/peaks/bias_pool_peaks.narrowPeak",
-        summits = f"{OUTPUT_DIR}/bias_model/preprocessing/peaks/bias_pool_summits.bed"
+        peaks   = "bias_model/preprocessing/peaks/bias_pool_peaks.narrowPeak",
+        summits = "bias_model/preprocessing/peaks/bias_pool_summits.bed"
     params:
-        outdir = f"{OUTPUT_DIR}/bias_model/preprocessing/peaks",
+        outdir = "bias_model/preprocessing/peaks",
         name   = "bias_pool",
         gsize  = config["macs3"]["macs3_gsize"],
         pvalue = config["macs3"]["macs3_pvalue"],
@@ -61,7 +61,7 @@ rule macs3_bias_peak_calling:
     container:
         config["macs3_container"]
     log:
-        f"{OUTPUT_DIR}/logs/macs3/bias_pool.log"
+        "logs/macs3/bias_pool.log"
     shell:
         """
         macs3 callpeak \
@@ -78,21 +78,21 @@ rule macs3_bias_peak_calling:
 
 rule filter_bias_peaks_blacklist:
     input:
-        peaks       = f"{OUTPUT_DIR}/bias_model/preprocessing/peaks/bias_pool_peaks.narrowPeak",
+        peaks       = "bias_model/preprocessing/peaks/bias_pool_peaks.narrowPeak",
         blacklist   = rules.get_blacklist.output.blacklist_bed,
         chrom_sizes = rules.get_chrom_sizes.output.chrom_sizes
     output:
-        filtered_peaks = f"{OUTPUT_DIR}/bias_model/preprocessing/peaks/bias_pool_peaks_no_blacklist.bed"
+        filtered_peaks = "bias_model/preprocessing/peaks/bias_pool_peaks_no_blacklist.bed"
     params:
         slop_bp = config["chromnpnet_bias"]["peak_blacklist_extension"],
-        slop_tmp = f"{OUTPUT_DIR}/bias_model/preprocessing/peaks/bias_slop_tmp.bed" # Use a temporary file for the slopped blacklist
+        slop_tmp = "bias_model/preprocessing/peaks/bias_slop_tmp.bed" # Use a temporary file for the slopped blacklist
     resources:
         mem_mb  = RESOURCES["filter_peaks_blacklist"]["mem_mb"],
         runtime = RESOURCES["filter_peaks_blacklist"]["runtime"]
     container:
         config["utils_container"] # Needs bedtools
     log:
-        f"{OUTPUT_DIR}/logs/filter_peaks/bias_pool.log"
+        "logs/filter_peaks/bias_pool.log"
     shell:
         """
         bedtools slop -i {input.blacklist} -g {input.chrom_sizes} -b {params.slop_bp} > {params.slop_tmp} 2>> {log}
@@ -102,9 +102,9 @@ rule filter_bias_peaks_blacklist:
 
 rule get_top_n_peaks_bias:
     input:
-        peaks = f"{OUTPUT_DIR}/bias_model/preprocessing/peaks/bias_pool_peaks_no_blacklist.bed"
+        peaks = "bias_model/preprocessing/peaks/bias_pool_peaks_no_blacklist.bed"
     output:
-        top_peaks = f"{OUTPUT_DIR}/bias_model/preprocessing/peaks/bias_pool_peaks_no_blacklist_top{TOP_N_PEAKS}.bed"
+        top_peaks = f"bias_model/preprocessing/peaks/bias_pool_peaks_no_blacklist_top{TOP_N_PEAKS}.bed"
     params:
         top_n_peaks = config["macs3_top_n_peaks"],
     resources:
@@ -113,7 +113,7 @@ rule get_top_n_peaks_bias:
     container:
         None
     log:
-        f"{OUTPUT_DIR}/logs/top_n_peaks/bias_pool_top{TOP_N_PEAKS}.log"
+        f"logs/top_n_peaks/bias_pool_top{TOP_N_PEAKS}.log"
     script:
         "../scripts/filter_top_peaks.py"
 
@@ -122,12 +122,12 @@ rule chrombpnet_bias_prep_nonpeaks:
         genome      = GENOME_FASTA,
         peaks       = rules.get_top_n_peaks_bias.output.top_peaks, # Use filtered and top N macs3 peaks
         chrom_sizes = rules.get_chrom_sizes.output.chrom_sizes,
-        fold_json   = os.path.join(SPLITS_DIR, "fold_{fold}.json"),
+        fold_json   = FOLD_JSON,
         blacklist   = rules.get_blacklist.output.blacklist_bed
     output:
-        nonpeaks = f"{OUTPUT_DIR}/bias_model/preprocessing/nonpeaks/bias_pool_fold_{{fold}}_negatives.bed",
+        nonpeaks = "bias_model/preprocessing/nonpeaks/bias_pool_fold_{fold}_negatives.bed",
     params:
-        output_prefix = f"{OUTPUT_DIR}/bias_model/preprocessing/nonpeaks/bias_pool_fold_{{fold}}"
+        output_prefix = "bias_model/preprocessing/nonpeaks/bias_pool_fold_{fold}"
     resources:
         mem_mb  = RESOURCES["chrombpnet_prep_nonpeaks"]["mem_mb"],
         runtime = RESOURCES["chrombpnet_prep_nonpeaks"]["runtime"]
@@ -136,7 +136,7 @@ rule chrombpnet_bias_prep_nonpeaks:
     shadow:
         "minimal"
     log:
-        f"{OUTPUT_DIR}/logs/chrombpnet_nonpeaks/bias_pool_fold_{{fold}}.log"
+        "logs/chrombpnet_nonpeaks/bias_pool_fold_{fold}.log"
     shell:
         """
         chrombpnet prep nonpeaks \
@@ -154,18 +154,19 @@ rule train_bias_model:
     input:
         genome      = GENOME_FASTA,
         chrom_sizes = rules.get_chrom_sizes.output.chrom_sizes,
-        split       = os.path.join(SPLITS_DIR, "fold_{fold}.json"),
-        bam         = f"{OUTPUT_DIR}/bias_model/preprocessing/bams/bias_pool.bam",
-        nonpeaks    = f"{OUTPUT_DIR}/bias_model/preprocessing/nonpeaks/bias_pool_fold_{{fold}}_negatives.bed",
-        peaks       = f"{OUTPUT_DIR}/bias_model/preprocessing/peaks/bias_pool_peaks_no_blacklist_top{TOP_N_PEAKS}.bed",
+        split       = FOLD_JSON,
+        bam         = "bias_model/preprocessing/bams/bias_pool.bam",
+        nonpeaks    = "bias_model/preprocessing/nonpeaks/bias_pool_fold_{fold}_negatives.bed",
+        peaks       = f"bias_model/preprocessing/peaks/bias_pool_peaks_no_blacklist_top{TOP_N_PEAKS}.bed",
     output:
-        flag       = f"{OUTPUT_DIR}/bias_model/bias_models/fold_{{fold}}/complete.flag", # Add flag for rule completion
-        bias_model = f"{OUTPUT_DIR}/bias_model/bias_models/fold_{{fold}}/models/bias.h5",
+        flag       = "bias_model/bias_models/fold_{fold}/complete.flag", # Add flag for rule completion
+        bias_model = "bias_model/bias_models/fold_{fold}/models/bias.h5",
+        report     = "bias_model/bias_models/fold_{fold}/evaluation/overall_report.html", # Check it to tune bias_thresh_factor
     params:
         assay  = config["chromnpnet_bias"]["assay_type"],
         extra  = config["chromnpnet_bias"]["extra_params"],
-        out_dir = f"{OUTPUT_DIR}/bias_model/bias_models/fold_{{fold}}",
-        out_dir_tmp = f"{OUTPUT_DIR}/bias_model/tmp_bias_models/fold_{{fold}}",
+        out_dir = "bias_model/bias_models/fold_{fold}",
+        out_dir_tmp = "bias_model/tmp_bias_models/fold_{fold}",
         bias_thresh_factor = config["chromnpnet_bias"]["bias_thresh_factor"]
     resources:
         mem_mb    = RESOURCES["train_bias_model"]["mem_mb"],
@@ -180,7 +181,7 @@ rule train_bias_model:
     container:
         config["chrombpnet_container"]
     log:
-        f"{OUTPUT_DIR}/logs/train_bias/bias_fold_{{fold}}.log"
+        "logs/train_bias/bias_fold_{fold}.log"
     shell:
         """
         # Delete tmp and output folder (in case exists from a failed run) 

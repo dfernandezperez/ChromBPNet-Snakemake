@@ -3,15 +3,9 @@ name: TOBIAS_ENV
 channels:
   - conda-forge
   - bioconda
-  - defaults
 
 dependencies:
-  - python=3
-  - gimmemotifs
-  - sklearn-contrib-lightning
-  - matplotlib<3.8  # fix for 'matplotlib.cbook' has no attribute 'mplDeprecation'
-  - pip
-  - pip:
-    - tobias>=0.9
-    - adjustText<0.8
-    - pypdf2<3.0  # PdfFileMerger is deprecated in 3.0
+  # Pre-built bioconda package. Installing TOBIAS with pip builds it from source, which fails
+  # with recent setuptools/pip. 0.17.x supports matplotlib>=3.8 and PyPDF2 3.x, so the old
+  # matplotlib<3.8 / pypdf2<3.0 / adjustText<0.8 pins are no longer needed.
+  - tobias=0.17.5
