@@ -7,6 +7,9 @@ use-singularity  : true
 singularity-args : "--bind /home,/scratch/qscd --nv" # Do not bind the whole /scratch: it would hide /scratch/chrombpnet inside the chrombpnet image
 --use-conda      : true
 retries          : 0    # Set the default number of retires if a job fails
+# Requeue jobs preempted in spot_gpu (the cluster doesn't by default): without it a preempted job is
+# cancelled, but the slurm plugin keeps waiting for it as if it would resume
+slurm-requeue    : true
 default-resources: 
   mem_mb : 1000 # Set default ram for rules (cores is by default 1)
   runtime: 5    # Set the default walltime for jobs (in minutes)

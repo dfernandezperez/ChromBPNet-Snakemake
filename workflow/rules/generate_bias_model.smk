@@ -5,9 +5,7 @@ rule merge_sort_index_bias_bams:
         bam = "bias_model/preprocessing/bams/bias_pool.bam",
         bai = "bias_model/preprocessing/bams/bias_pool.bam.bai"
     params:
-        # Calculate the number of input bams here
-        num_bams      = lambda w, input: len(input.bams),
-        merged_unsort = "bias_model/preprocessing/bams/bias_merged_unsorted.bam"
+        scripts = SCRIPTS_DIR
     resources:
         mem_mb  = RESOURCES["merge_sort_index_bias_bams"]["mem_mb"],
         runtime = RESOURCES["merge_sort_index_bias_bams"]["runtime"]
@@ -18,25 +16,7 @@ rule merge_sort_index_bias_bams:
     log:
         "logs/bams/bias_merge_sort_index.log"
     shell:
-        """
-        if [ {params.num_bams} -eq 1 ]; then
-            echo "Only one input BAM found, sorting and indexing..." > {log}
-            samtools sort -@ {threads} -m 7G -o {output.bam} {input.bams[0]} 2>> {log}
-        else
-            echo "Merging {params.num_bams} BAM files..." > {log}
-            # Use a temporary file for merged unsorted BAM
-            # Using output.bam prefix for temp file name consistency
-            MERGED_UNSORTED={params.merged_unsort}
-            samtools merge -@ {threads} -f $MERGED_UNSORTED {input.bams} 2>> {log}
-            echo "Sorting merged BAM..." >> {log}
-            samtools sort -@ {threads} -m 7G -o {output.bam} $MERGED_UNSORTED 2>> {log}
-            echo "Removing temporary merged file..." >> {log}
-            rm $MERGED_UNSORTED
-        fi
-        echo "Indexing final BAM..." >> {log}
-        samtools index -@ {threads} {output.bam} 2>> {log}
-        echo "BAM processing finished." >> {log}
-        """
+        "bash {params.scripts}/merge_sort_index_bams.sh {threads} {output.bam} {input.bams} > {log} 2>&1"
 
 # --- Preprocessing Rules (for bias model) ---
 rule macs3_bias_peak_calling:
@@ -107,6 +87,7 @@ rule get_top_n_peaks_bias:
         top_peaks = f"bias_model/preprocessing/peaks/bias_pool_peaks_no_blacklist_top{TOP_N_PEAKS}.bed"
     params:
         top_n_peaks = config["macs3_top_n_peaks"],
+        canonical_chroms_regex = config["chr_splits"]["canonical_chroms_regex"]
     resources:
         mem_mb  = RESOURCES["get_top_n_peaks"]["mem_mb"],
         runtime = RESOURCES["get_top_n_peaks"]["runtime"]
@@ -149,7 +130,12 @@ rule chrombpnet_bias_prep_nonpeaks:
                 > {log} 2>&1
         """
 
-# --- Model Training Rule (Per Fold) ---
+# --- Bias model training (per fold) ---
+# `chrombpnet bias train` only trains the model, so the chrombpnet models can start training with it
+# right away. Its QC (`chrombpnet bias pipeline` would run it in the same job) is split below into a GPU
+# job (predictions + contribution scores of 30K peaks) and CPU jobs (TF-MoDISco + report).
+BIAS_DIR = "bias_model/bias_models/fold_{fold}"
+
 rule train_bias_model:
     input:
         genome      = GENOME_FASTA,
@@ -159,36 +145,42 @@ rule train_bias_model:
         nonpeaks    = "bias_model/preprocessing/nonpeaks/bias_pool_fold_{fold}_negatives.bed",
         peaks       = f"bias_model/preprocessing/peaks/bias_pool_peaks_no_blacklist_top{TOP_N_PEAKS}.bed",
     output:
-        flag       = "bias_model/bias_models/fold_{fold}/complete.flag", # Add flag for rule completion
-        bias_model = "bias_model/bias_models/fold_{fold}/models/bias.h5",
-        report     = "bias_model/bias_models/fold_{fold}/evaluation/overall_report.html", # Check it to tune bias_thresh_factor
+        flag       = f"{BIAS_DIR}/complete.flag", # Add flag for rule completion
+        bias_model = f"{BIAS_DIR}/models/bias.h5",
+        bigwig     = f"{BIAS_DIR}/auxiliary/data_unstranded.bw", # Observed Tn5 insertions, used by the QC
+        peaks      = f"{BIAS_DIR}/auxiliary/filtered.bias_peaks.bed",
+        nonpeaks   = f"{BIAS_DIR}/auxiliary/filtered.bias_nonpeaks.bed",
+        report     = f"{BIAS_DIR}/evaluation/train_report.html", # Training-only report (the full one is made by bias_report)
     params:
         assay  = config["chromnpnet_bias"]["assay_type"],
         extra  = config["chromnpnet_bias"]["extra_params"],
-        out_dir = "bias_model/bias_models/fold_{fold}",
+        out_dir = BIAS_DIR,
         out_dir_tmp = "bias_model/tmp_bias_models/fold_{fold}",
-        bias_thresh_factor = config["chromnpnet_bias"]["bias_thresh_factor"]
+        bias_thresh_factor = config["chromnpnet_bias"]["bias_thresh_factor"],
+        thread_env = lambda w, threads: thread_env(threads)
     resources:
         mem_mb    = RESOURCES["train_bias_model"]["mem_mb"],
         runtime   = RESOURCES["train_bias_model"]["runtime"],
         cpu       = RESOURCES["train_bias_model"]["cpu"],
         gres      = RESOURCES["train_bias_model"]["gres"],
-        slurm_partition = RESOURCES["train_bias_model"]["slurm_partition"]
+        slurm_partition = gpu_partition("train_bias_model")
     threads:
         RESOURCES["train_bias_model"]["cpu"]
     retries: 
         RESOURCES["train_bias_model"]["retries"]
+    priority: 100 # Every chrombpnet model needs it
     container:
         config["chrombpnet_container"]
     log:
         "logs/train_bias/bias_fold_{fold}.log"
     shell:
         """
+        export {params.thread_env}
         # Delete tmp and output folder (in case exists from a failed run) 
         # to avoid chrombpnet to complain
         rm -rf {params.out_dir_tmp} > {log} 2>&1
         rm -rf {params.out_dir} >> {log} 2>&1
-        chrombpnet bias pipeline \
+        chrombpnet bias train \
                 -ibam {input.bam} \
                 -d {params.assay} \
                 -g {input.genome} \
@@ -200,6 +192,9 @@ rule train_bias_model:
                 -o {params.out_dir_tmp} \
                 {params.extra} \
                 >> {log} 2>&1
+        # The full QC report (bias_report) gets the overall_report name
+        mv {params.out_dir_tmp}/evaluation/overall_report.html {params.out_dir_tmp}/evaluation/train_report.html
+        mv {params.out_dir_tmp}/evaluation/overall_report.pdf {params.out_dir_tmp}/evaluation/train_report.pdf
         echo "bias model finished! Moving output files to output directory" >> {log} 2>&1
         # chrombpnet raises an error if the output folder exists at launch.
         # Snakemake creates the outdir before rule execution, so the only workaround
@@ -207,3 +202,122 @@ rule train_bias_model:
         mv {params.out_dir_tmp} {params.out_dir} >> {log} 2>&1
         touch {output.flag} >> {log} 2>&1
         """
+
+# --- Bias model QC (same steps and file names as `chrombpnet bias pipeline`) ---
+# Predictions on the bias training peaks/nonpeaks (metrics) and contribution scores of 30K random peaks
+rule bias_qc_gpu:
+    input:
+        genome     = GENOME_FASTA,
+        split      = FOLD_JSON,
+        bias_model = rules.train_bias_model.output.bias_model,
+        bigwig     = rules.train_bias_model.output.bigwig,
+        peaks      = rules.train_bias_model.output.peaks,
+        nonpeaks   = rules.train_bias_model.output.nonpeaks
+    output:
+        metrics   = f"{BIAS_DIR}/evaluation/bias_metrics.json",
+        subsample = f"{BIAS_DIR}/auxiliary/30K_subsample_peaks.bed",
+        regions   = f"{BIAS_DIR}/auxiliary/interpret_subsample/bias.interpreted_regions.bed",
+        profile   = f"{BIAS_DIR}/auxiliary/interpret_subsample/bias.profile_scores.h5",
+        counts    = f"{BIAS_DIR}/auxiliary/interpret_subsample/bias.counts_scores.h5"
+    params:
+        scripts         = SCRIPTS_DIR,
+        prefix_pred     = f"{BIAS_DIR}/evaluation/bias",
+        prefix_contribs = f"{BIAS_DIR}/auxiliary/interpret_subsample/bias",
+        n_regions       = config["qc_modisco"]["n_regions"],
+        n_procs         = config["contribs"]["procs_per_gpu"],
+        thread_env      = lambda w, threads: thread_env(threads)
+    resources:
+        mem_mb    = RESOURCES["bias_qc_gpu"]["mem_mb"],
+        runtime   = RESOURCES["bias_qc_gpu"]["runtime"],
+        cpu       = RESOURCES["bias_qc_gpu"]["cpu"],
+        gres      = RESOURCES["bias_qc_gpu"]["gres"],
+        slurm_partition = gpu_partition("bias_qc_gpu")
+    threads:
+        RESOURCES["bias_qc_gpu"]["cpu"]
+    retries: 
+        RESOURCES["bias_qc_gpu"]["retries"]
+    container:
+        config["chrombpnet_container"]
+    log:
+        "logs/bias_qc/bias_fold_{fold}_gpu.log"
+    shell:
+        """
+        export {params.thread_env}
+        python -m chrombpnet.training.predict \
+            -g {input.genome} \
+            -b {input.bigwig} \
+            -p {input.peaks} \
+            -n {input.nonpeaks} \
+            -fl {input.split} \
+            -m {input.bias_model} \
+            -o {params.prefix_pred} \
+            > {log} 2>&1
+        python {params.scripts}/subsample_bed.py {input.peaks} {output.subsample} --n {params.n_regions} --seed 1234 >> {log} 2>&1
+        python {params.scripts}/parallel_contribs.py \
+            --model {input.bias_model} \
+            --regions {output.subsample} \
+            --genome {input.genome} \
+            --out-prefix {params.prefix_contribs} \
+            --heads counts profile \
+            --n-procs {params.n_procs} \
+            --threads {threads} \
+            >> {log} 2>&1
+        """
+
+# TF-MoDISco on the bias model contributions: it should only find Tn5 (or DNase) bias motifs
+rule bias_qc_modisco:
+    input:
+        scores = f"{BIAS_DIR}/auxiliary/interpret_subsample/bias.{{head}}_scores.h5"
+    output:
+        modisco = f"{BIAS_DIR}/auxiliary/interpret_subsample/modisco_results_{{head}}_scores.h5",
+        html    = f"{BIAS_DIR}/evaluation/modisco_{{head}}/motifs.html",
+        pdf     = f"{BIAS_DIR}/evaluation/bias_{{head}}.pdf"
+    params:
+        report_dir = f"{BIAS_DIR}/evaluation/modisco_{{head}}",
+        n_seqlets  = config["qc_modisco"]["seqlets"],
+        window     = config["qc_modisco"]["window"],
+        meme_db    = config["modisco_tf"]["meme_db"],
+        thread_env = lambda w, threads: thread_env(threads)
+    resources:
+        mem_mb  = RESOURCES["bias_qc_modisco"]["mem_mb"],
+        runtime = RESOURCES["bias_qc_modisco"]["runtime"]
+    threads:
+        RESOURCES["bias_qc_modisco"]["cpu"]
+    retries: 
+        RESOURCES["bias_qc_modisco"]["retries"]
+    container:
+        config["chrombpnet_container"]
+    log:
+        "logs/bias_qc/bias_fold_{fold}_modisco_{head}.log"
+    shell:
+        """
+        export {params.thread_env}
+        rm -rf {params.report_dir}
+        modisco motifs -i {input.scores} -n {params.n_seqlets} -w {params.window} -o {output.modisco} > {log} 2>&1
+        # Default image path prefix ("./"): the overall report expects it
+        modisco report -i {output.modisco} -o {params.report_dir}/ -m {params.meme_db} >> {log} 2>&1
+        python -c "import chrombpnet.evaluation.modisco.convert_html_to_pdf as c; c.main('{output.html}', '{output.pdf}')" >> {log} 2>&1
+        """
+
+rule bias_report:
+    input:
+        flag     = rules.train_bias_model.output.flag,
+        metrics  = rules.bias_qc_gpu.output.metrics,
+        modisco  = expand(f"{BIAS_DIR}/evaluation/modisco_{{head}}/motifs.html", head = ["profile", "counts"], allow_missing = True),
+        pdfs     = expand(f"{BIAS_DIR}/evaluation/bias_{{head}}.pdf", head = ["profile", "counts"], allow_missing = True)
+    output:
+        html = f"{BIAS_DIR}/evaluation/overall_report.html", # Check it to tune bias_thresh_factor
+        pdf  = f"{BIAS_DIR}/evaluation/overall_report.pdf"
+    params:
+        dir = BIAS_DIR
+    resources:
+        mem_mb  = RESOURCES["bias_report"]["mem_mb"],
+        runtime = RESOURCES["bias_report"]["runtime"]
+    retries: 
+        RESOURCES["bias_report"]["retries"]
+    container:
+        config["chrombpnet_container"]
+    log:
+        "logs/bias_qc/bias_fold_{fold}_report.log"
+    shell:
+        "python -m chrombpnet.helpers.generate_reports.make_html_bias -id {params.dir} -icmd pipeline > {log} 2>&1"

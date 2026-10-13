@@ -67,6 +67,7 @@ rule get_top_n_peaks:
         top_peaks = f"preprocessing/peaks/{{sample}}_peaks_no_blacklist_top{TOP_N_PEAKS}.bed" # Embed N in filename if desired
     params:
         top_n_peaks = config["macs3_top_n_peaks"],
+        canonical_chroms_regex = config["chr_splits"]["canonical_chroms_regex"]
     resources:
         mem_mb  = RESOURCES["get_top_n_peaks"]["mem_mb"],
         runtime = RESOURCES["get_top_n_peaks"]["runtime"]

@@ -43,11 +43,14 @@ TOP_N_PEAKS  = config["macs3_top_n_peaks"]
 # Fold json files: pre-made ones from `splits_dir`, or generated with `chrombpnet prep splits`
 # from `chr_splits` in the config when `splits_dir` is empty (see rule make_chr_splits)
 FOLD_JSON    = os.path.join(SPLITS_DIR, "fold_{fold}.json") if SPLITS_DIR != "" else "chr_splits/fold_{fold}.json"
+SCRIPTS_DIR  = os.path.join(workflow.basedir, "scripts")
 
 # Avoid ambiguity between per-fold ({sample}_fold_{fold}) and fold-averaged ({sample}_mean) outputs
 wildcard_constraints:
     sample = "|".join(map(re.escape, SAMPLES)),
-    fold   = r"\d+"
+    fold   = r"\d+",
+    chunk  = r"\d{3}",
+    head   = "profile|counts"
 
 # --- Portable TMPDIR Configuration ---
 # Get the HOST path from the config
@@ -83,13 +86,16 @@ onstart:
     shell("find .snakemake/conda .conda_pkgs -exec touch -h -c {{}} + 2>/dev/null || true")
 
 # --- Load snakemake rules ---
+include: "rules/common.smk"
 include: "rules/prepare_data.smk"
 include: "rules/generate_bias_model.smk"
 include: "rules/preprocessing.smk"
 include: "rules/training.smk"
+include: "rules/qc.smk"
 include: "rules/prediction.smk"
 include: "rules/fold_average.smk"
 include: "rules/tobias.smk"
+include: "rules/finemo.smk"
 
 # --- Target Rule: Define final desired outputs ---
 rule all:
@@ -102,5 +108,8 @@ rule all:
         expand("pred_bw/{sample}_mean_chrombpnet_nobias.bw", sample = SAMPLES),
         expand("footprints/{sample}/{sample}_fold_{fold}_footprints.h5", sample = SAMPLES, fold = FOLDS),
         expand("modisco_tf/{sample}/{sample}_modisco.h5", sample = SAMPLES),
+        expand("modisco_tf/{sample}/{sample}_modisco_motifs.meme", sample = SAMPLES),
+        expand("finemo/{sample}/hits/hits_unique.tsv", sample = SAMPLES),
+        expand("finemo/{sample}/report/motif_occurrences.tsv", sample = SAMPLES),
         "tobias/TFBS_count",
         "tobias/TFBS_profile",

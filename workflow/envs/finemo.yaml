@@ -1,0 +1,13 @@
+name: FINEMO_ENV
+
+channels:
+  - conda-forge
+
+dependencies:
+  - python=3.11
+  - pip
+  - pip:
+      # PyPI torch wheels bundle the CUDA runtime, so the env can be built on a node without GPU
+      # (conda-forge's CUDA builds are chosen by detecting the GPU of the node creating the env)
+      - torch==2.6.0
+      - finemo==0.41

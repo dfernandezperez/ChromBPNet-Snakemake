@@ -92,9 +92,7 @@ rule merge_sort_index_bams:
         bam = "preprocessing/bams/{sample}.bam",
         bai = "preprocessing/bams/{sample}.bam.bai"
     params:
-        # Calculate the number of input bams here
-        num_bams      = lambda w, input: len(input.bams),
-        merged_unsort = "preprocessing/bams/{sample}_merged_unsorted.bam"
+        scripts = SCRIPTS_DIR
     resources:
         mem_mb  = RESOURCES["merge_sort_index_bams"]["mem_mb"],
         runtime = RESOURCES["merge_sort_index_bams"]["runtime"]
@@ -105,26 +103,9 @@ rule merge_sort_index_bams:
     log:
         "logs/bams/{sample}_merge_sort_index.log"
     shell:
-        # Create the output directory first
-        """
-        if [ {params.num_bams} -eq 1 ]; then
-            echo "Only one input BAM found, sorting and indexing..." > {log}
-            samtools sort -@ {threads} -m 7G -o {output.bam} {input.bams[0]} 2>> {log}
-        else
-            echo "Merging {params.num_bams} BAM files..." > {log}
-            # Use a temporary file for merged unsorted BAM
-            # Using output.bam prefix for temp file name consistency
-            MERGED_UNSORTED={params.merged_unsort}
-            samtools merge -@ {threads} -f $MERGED_UNSORTED {input.bams} 2>> {log}
-            echo "Sorting merged BAM..." >> {log}
-            samtools sort -@ {threads} -m 7G -o {output.bam} $MERGED_UNSORTED 2>> {log}
-            echo "Removing temporary merged file..." >> {log}
-            rm $MERGED_UNSORTED
-        fi
-        echo "Indexing final BAM..." >> {log}
-        samtools index -@ {threads} {output.bam} 2>> {log}
-        echo "BAM processing finished." >> {log}
-        """
+        # Already coordinate-sorted inputs are linked or merged without sorting again
+        "bash {params.scripts}/merge_sort_index_bams.sh {threads} {output.bam} {input.bams} > {log} 2>&1"
+
 # --- Chromosome splits (only when no pre-made `splits_dir` is given) ---
 if SPLITS_DIR == "":
     rule get_canonical_chrom_sizes:

@@ -4,6 +4,20 @@
 # mem_mb is specified in megabytes (GB * 1000).
 # cpu specifies the number of cores (adjust based on tool capabilities and cluster policy).
 # retries specifies how many times a job should be resubmitted on failure (useful for transient issues).
+#
+# GPU rules: `gres` requests an RTX 3090 (TensorFlow 2.8 in the chrombpnet image is not safe on the
+# 4090/H200 nodes) and `slurm_partition` is either a partition name or
+#   main: always gpu_routing.main_partition (model training: long jobs that should not be preempted)
+#   auto: main_partition while you have < gpu_lane_limit jobs there, otherwise overflow_partition
+#         (preemptible: jobs are requeued and restart; retries after a failure go to main_partition)
+# The 3090 nodes have 32 CPUs for 6-7 GPUs, so GPU jobs request at most 5 CPUs.
+gpu_routing:
+  enabled: true
+  main_partition: irb_gpu_3090 # 2 GPUs per user at a time (QOS gpulimits)
+  overflow_partition: spot_gpu # No GPU limit, preemptible
+  gpu_lane_limit: 2
+  squeue_ttl_seconds: 15
+  claim_ttl_seconds: 300
 
 get_chrom_sizes:
   runtime: 10
@@ -63,45 +77,98 @@ chrombpnet_prep_nonpeaks:
   mem_mb: 8000
   retries: 0
 
+# `chrombpnet bias train`. Its QC (bias_qc_*) runs in parallel with the chrombpnet models training
 train_bias_model:
   runtime: 2880
   mem_mb: 80000
-  cpu: 2
+  cpu: 5
   gres: gpu:rtx3090:1
-  slurm_partition: irb_gpu_3090
+  slurm_partition: main
   retries: 0
 
+# Predictions + contribution scores of 30K peaks with the bias model
+bias_qc_gpu:
+  runtime: 600
+  mem_mb: 32000
+  cpu: 5
+  gres: gpu:rtx3090:1
+  slurm_partition: auto
+  retries: 1
+
+# TF-MoDISco on the bias model contributions (profile and counts run as separate jobs)
+bias_qc_modisco:
+  runtime: 1440
+  mem_mb: 40000
+  cpu: 16
+  retries: 0
+
+bias_report:
+  runtime: 30
+  mem_mb: 8000
+  retries: 0
+
+# `chrombpnet train`
 train_chrombpnet:
   runtime: 2880
   mem_mb: 80000
-  cpu: 2
+  cpu: 5
   gres: gpu:rtx3090:1
-  slurm_partition: irb_gpu_3090
+  slurm_partition: main
+  retries: 0
+
+# Test set metrics + marginal footprints of the bias motifs
+chrombpnet_qc_gpu:
+  runtime: 240
+  mem_mb: 32000
+  cpu: 4
+  gres: gpu:rtx3090:1
+  slurm_partition: auto
+  retries: 1
+
+# TF-MoDISco on a subset of each fold's contribution scores, for the models QC report
+chrombpnet_qc_modisco:
+  runtime: 1440
+  mem_mb: 40000
+  cpu: 16
+  retries: 0
+
+chrombpnet_report:
+  runtime: 30
+  mem_mb: 8000
   retries: 0
 
 pred_bw:
-  runtime: 2880
-  mem_mb: 80000
-  cpu: 2
+  runtime: 600
+  mem_mb: 32000
+  cpu: 4
   gres: gpu:rtx3090:1
-  slurm_partition: irb_gpu_3090
-  retries: 0
+  slurm_partition: auto
+  retries: 1
 
-contribs_bw:
-  runtime: 2880
-  mem_mb: 80000
-  cpu: 2
+# One chunk of the contribution scores (see `contribs` in config.yaml). `cpu` is shared by the
+# contribs.procs_per_gpu DeepSHAP processes (each also needs ~5 GB of GPU memory)
+contribs_chunk:
+  runtime: 360
+  mem_mb: 32000
+  cpu: 4
   gres: gpu:rtx3090:1
-  slurm_partition: irb_gpu_3090
+  slurm_partition: auto
+  retries: 1
+
+# Concatenates the chunks and writes the contribution bigwigs
+merge_contribs:
+  runtime: 240
+  mem_mb: 32000
+  cpu: 2
   retries: 0
 
 chrombpnet_footprints:
-  runtime: 600
-  mem_mb: 40000
-  cpu: 2
+  runtime: 240
+  mem_mb: 32000
+  cpu: 4
   gres: gpu:rtx3090:1
-  slurm_partition: irb_gpu_3090
-  retries: 0
+  slurm_partition: auto
+  retries: 1
 
 # Fold averaging loads all folds' contribution h5 files (~3.4 GB each for 200k peaks)
 average_pred_bw:
@@ -120,6 +187,30 @@ modisco_tf:
   cpu: 20
   retries: 0
 
+modisco_meme:
+  runtime: 10
+  mem_mb: 4000
+  retries: 0
+
+# Fi-NeMo motif hit calling (call-hits uses the GPU)
+finemo_extract_regions:
+  runtime: 60
+  mem_mb: 16000
+  retries: 0
+
+finemo_call_hits:
+  runtime: 240
+  mem_mb: 32000
+  cpu: 4
+  gres: gpu:rtx3090:1
+  slurm_partition: auto
+  retries: 1
+
+finemo_report:
+  runtime: 120
+  mem_mb: 32000
+  retries: 0
+
 merge_condition_peaks:
   runtime: 120
   mem_mb: 20000
@@ -129,4 +220,13 @@ tobias_bindetect:
   runtime: 600
   mem_mb: 100000
   cpu: 30
+  retries: 0
+
+# GPU sanity check (rule gpu_test_rule)
+gpu_test:
+  runtime: 30
+  mem_mb: 8000
+  cpu: 2
+  gres: gpu:rtx3090:1
+  slurm_partition: auto
   retries: 0

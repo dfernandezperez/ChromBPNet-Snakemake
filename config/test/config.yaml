@@ -15,6 +15,12 @@ chromnpnet_model:
   assay_type: "ATAC"
   extra_params: "-e 2"
 
+contribs:
+  n_chunks: 2
+  procs_per_gpu: 2
+  shuffle_seed: 1234
+  keep_chunks: false
+
 modisco_tf:
   meme_db: "/scratch/chrombpnet/chrombpnet/data/motifs.meme.txt"
   seqlets: 20000

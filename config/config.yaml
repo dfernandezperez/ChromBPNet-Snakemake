@@ -28,7 +28,7 @@ motif_file_url: "https://jaspar.elixir.no/download/data/2024/CORE/JASPAR2024_COR
 # (needed for other genomes).
 splits_dir: "config/chr_splits"
 chr_splits:
-  canonical_chroms_regex: "^chr([0-9]+|X|Y)$" # Chromosomes kept for train/valid/test
+  canonical_chroms_regex: "^chr([0-9]+|X|Y)$" # Chromosomes kept for train/valid/test. Peaks on other chromosomes (chrM, unplaced contigs) are also removed before the top-N selection
   folds: # test/valid chromosomes per fold; all other canonical chromosomes are used for training
     0: {test: [chr1, chr3, chr6], valid: [chr8, chr19]}
     1: {test: [chr2, chr8, chr9, chr16], valid: [chr12, chr17]}
@@ -47,7 +47,7 @@ macs3:
   model_params: "--nolambda --nomodel --shift -75 --extsize 150" # Model related parameters
   other_params: "--keep-dup all --call-summits" # Any other parameters you want to add
 
-# Filter top N macs3 peaks by pvalue after blacklist region filt (chromBPNet paper uses 200k)
+# Keep the top N macs3 peaks by pvalue after blacklist region filt (chromBPNet paper uses 200k)
 macs3_top_n_peaks: 200000
 
 # ChromBPNet Preprocessing Parameters
@@ -61,6 +61,25 @@ chromnpnet_bias:
 chromnpnet_model:
   assay_type: "ATAC" # Or "DNASE"
   extra_params: "" # Extra parameters for bias model
+
+# Contribution scores (chrombpnet DeepSHAP) for all peaks of each sample and fold.
+# The peaks are shuffled (fixed seed, same order for every fold) and split into `n_chunks` GPU jobs
+# that can run in parallel on different GPUs (~165 regions/min per RTX 3090, so 20 chunks of 200k
+# peaks take ~1 h each); the chunks are merged afterwards. Each job runs `procs_per_gpu` DeepSHAP
+# processes on its GPU: 2 is ~1.2x faster than 1, more saturate the GPU (and 5 run out of its memory).
+# Changing n_chunks or shuffle_seed recomputes all the contribution scores.
+contribs:
+  n_chunks: 20
+  procs_per_gpu: 2
+  shuffle_seed: 1234
+  keep_chunks: false # Keep the per-chunk h5 files (otherwise they are deleted once merged)
+
+# TF-MoDISco run on each fold's contribution scores for the QC report of the chrombpnet models
+# (same settings as `chrombpnet pipeline`, on a random subset of the fold's peaks)
+qc_modisco:
+  n_regions: 30000
+  seqlets: 50000
+  window: 500
 
 # Modisco Parameters (adjust as needed). This meme database 
 # is located in the singularity image of chromBPnet.
@@ -76,10 +95,18 @@ modisco_tf:
 footprints:
   motifs_to_pwm: "/scratch/chrombpnet/chrombpnet/data/motif_to_pwm.TF.tsv"
 
+# Motif instances (hits) of each sample's TF-MoDISco motifs in its fold-averaged contribution scores
+# (Fi-NeMo, https://github.com/kundajelab/Fi-NeMo).
+finemo:
+  region_width: 1000 # Region around each peak summit where hits are called
+  call_hits_params: "" # Extra parameters for `finemo call-hits` (e.g. "-l 0.7" sets the hit sparsity)
+
 # Bindetect extra parameters
 bindetect: ""
 
 # --- Docker Images ---
-chrombpnet_container: "docker://kundajelab/chrombpnet:latest"
+# Pinned to a digest (currently the same image as the `latest` tag): some rules call chrombpnet's
+# internal modules and report generators, which could change in a new release.
+chrombpnet_container: "docker://kundajelab/chrombpnet@sha256:6f41e0f59fc025285645e2cbfd1bb6347431b4e0ab6088804d11843cd6aed169"
 macs3_container: "docker://quay.io/biocontainers/macs3:3.0.3--py39h0699b22_0"
 utils_container: "docker://quay.io/biocontainers/bedtools:2.31.1--h13024bc_3" # Example, might need ucsc-wiggletools or similar

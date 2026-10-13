@@ -19,3 +19,4 @@ snakemake.log
 .cache
 .config
 .nv
+__pycache__/

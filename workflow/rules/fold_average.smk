@@ -8,7 +8,7 @@ rule average_pred_bw:
     output:
         bw = "pred_bw/{sample}_mean_chrombpnet_nobias.bw"
     params:
-        scripts = os.path.join(workflow.basedir, "scripts")
+        scripts = SCRIPTS_DIR
     resources:
         mem_mb  = RESOURCES["average_pred_bw"]["mem_mb"],
         runtime = RESOURCES["average_pred_bw"]["runtime"]
@@ -37,7 +37,7 @@ rule average_contribs:
         profile_bw = "contribs_bw/{sample}/{sample}_mean.profile_scores.bw",
         counts_bw  = "contribs_bw/{sample}/{sample}_mean.counts_scores.bw"
     params:
-        scripts = os.path.join(workflow.basedir, "scripts")
+        scripts = SCRIPTS_DIR
     resources:
         mem_mb  = RESOURCES["average_contribs"]["mem_mb"],
         runtime = RESOURCES["average_contribs"]["runtime"]
