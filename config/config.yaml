@@ -1,6 +1,9 @@
 # ---  Location of configuration files and input. This MUST NOT be modified. ---
 resources: config/resources.yaml
 sample_sheet: config/samples.tsv
+# Per-run changes to resources.yaml, merged into it rule by rule (set them in a run's --configfile), e.g.
+#   resource_overrides: {train_chrombpnet: {slurm_partition: auto}, modisco_tf: {mem_mb: 80000}}
+resource_overrides: {}
 
 # --- General Settings ---
 # Main output directory. Everything that is not pipeline code/configuration is stored here:

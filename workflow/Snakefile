@@ -3,6 +3,7 @@ import re
 import glob
 import yaml
 import pandas as pd
+from snakemake.utils import update_config
 
 # Pipeline repository. Relative paths in the configuration (sample sheet, BAMs, blacklist, splits...)
 # are relative to it: the workflow runs inside `output_dir` (see `workdir` below) and the cluster jobs
@@ -33,6 +34,7 @@ if not ALL_BIAS_BAMS:
 
 # --- Helper Variables ---
 RESOURCES    = yaml.load(open(repo_path(config['resources']), 'r'), Loader=yaml.FullLoader)
+update_config(RESOURCES, config.get("resource_overrides", {})) # Per-run changes, e.g. from a --configfile
 OUTPUT_DIR   = repo_path(config["output_dir"])
 GENOME_BUILD = config["genome_build"]
 GENOME_FASTA = f"data/{GENOME_BUILD}.fa" # Relative paths like data/ are inside OUTPUT_DIR (workdir)

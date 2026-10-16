@@ -1,0 +1,10 @@
+# Tppp3 ATAC (config/samples.tsv), 5 folds, contribution scores with the bpnetlite backend.
+# Used on top of config/config.yaml:
+#   sbatch slurm_run_pipeline.slurm --configfile config/tppp3/bpnetlite.yaml
+output_dir: "/scratch/qscd/dfernandezp/Tppp3-bpnet-lite"
+folds: ["0", "1", "2", "3", "4"]
+# 40 models: training also overflows to spot_gpu once the 2 irb_gpu_3090 lanes are busy (a preempted
+# model restarts from scratch)
+resource_overrides:
+  train_chrombpnet: {slurm_partition: auto}
+  train_bias_model: {slurm_partition: auto}

@@ -1,0 +1,8 @@
+# The same models as config/tppp3/bpnetlite.yaml, with chrombpnet's own DeepSHAP, to compare the
+# contribution-score backends. The output dir is a copy of the bpnet-lite run without its contribution
+# outputs (contribs_bw, modisco_tf, finemo, tobias) and conda envs, rerun from the contribution scores:
+#   sbatch slurm_run_pipeline.slurm --configfile config/tppp3/chrombpnet.yaml --forcerun contribs_chunk
+output_dir: "/scratch/qscd/dfernandezp/Tppp3-chrombpnet"
+folds: ["0", "1", "2", "3", "4"]
+contribs:
+  backend: chrombpnet

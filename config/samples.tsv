@@ -3,4 +3,6 @@ TdTNeg-rep2	/home/dfernandezp/ATACseq_v2_Tppp3_BAM/TdTomatoNeg_REP2.mLb.clN.sort
 TdTNeg-rep3	/home/dfernandezp/ATACseq_v2_Tppp3_BAM/TdTomatoNeg_REP3.mLb.clN.sorted.bam	True
 TdTNeg-rep4	/home/dfernandezp/ATACseq_v2_Tppp3_BAM/TdTomatoNeg_REP4.mLb.clN.sorted.bam	True
 TdTPos-rep2	/home/dfernandezp/ATACseq_v2_Tppp3_BAM/TdTomatoPos_REP2.mLb.clN.sorted.bam	True
+TdTPos-rep3	/home/dfernandezp/ATACseq_v2_Tppp3_BAM/TdTomatoPos_REP3.mLb.clN.sorted.bam	True
+TdTPos-rep4	/home/dfernandezp/ATACseq_v2_Tppp3_BAM/TdTomatoPos_REP4.mLb.clN.sorted.bam	True
 TdTPos-rep6	/home/dfernandezp/ATACseq_v2_Tppp3_BAM/TdTomatoPos_REP6.mLb.clN.sorted.bam	True
