@@ -36,18 +36,23 @@ rule pred_bw:
         -op {params.out_fold}/{params.prefix} > {log} 2>&1
         """
 
-# --- Contribution scores (DeepSHAP) of all the peaks ---
-# The slowest step (~165 regions/min per GPU): the peaks are split into `contribs.n_chunks` GPU jobs
-# that can run on several GPUs at once, each running `contribs.procs_per_gpu` processes on its GPU
-# (scripts/parallel_contribs.py). The chunks are then merged into the files of `chrombpnet contribs_bw`.
+# --- Contribution scores (DeepLIFT/SHAP) of all the peaks ---
+# The slowest step (~165-190 regions/min per RTX 3090): the peaks are split into `contribs.n_chunks`
+# GPU jobs that can run on several GPUs at once, with chrombpnet's DeepSHAP (backend chrombpnet:
+# scripts/parallel_contribs.py) or bpnet-lite's PyTorch DeepLIFT/SHAP (backend bpnetlite:
+# scripts/bpnetlite_contribs.py). The chunks are then merged into the files of `chrombpnet contribs_bw`.
 # The peaks are shuffled first (fixed seed, same order for all folds, so the folds can be averaged
 # row by row): TF-MoDISco takes its seqlets in region order, and the chromosome-sorted peaks would
 # bias them towards the first chromosomes when the seqlet limit is reached.
-CONTRIB_CHUNKS = [f"{i:03d}" for i in range(config["contribs"]["n_chunks"])]
+CONTRIBS = config["contribs"]
+if CONTRIBS["backend"] not in ("chrombpnet", "bpnetlite"):
+    raise ValueError(f"contribs.backend must be chrombpnet or bpnetlite, not {CONTRIBS['backend']}")
+BPNETLITE = CONTRIBS["backend"] == "bpnetlite"
+CONTRIB_CHUNKS = [f"{i:03d}" for i in range(CONTRIBS["n_chunks"])]
 CONTRIB_CHUNK_PREFIX = "contribs_bw/{sample}/chunks/{sample}_fold_{fold}_chunk_{chunk}"
 
 def contribs_chunk_file(path):
-    return path if config["contribs"]["keep_chunks"] else temp(path)
+    return path if CONTRIBS["keep_chunks"] else temp(path)
 
 rule split_contribs_regions:
     input:
@@ -55,7 +60,7 @@ rule split_contribs_regions:
     output:
         expand("contribs_bw/{{sample}}/chunks/regions_{chunk}.bed", chunk = CONTRIB_CHUNKS)
     params:
-        seed = config["contribs"]["shuffle_seed"]
+        seed = CONTRIBS["shuffle_seed"]
     localrule: True
     run:
         import numpy as np
@@ -78,31 +83,38 @@ rule contribs_chunk:
     params:
         scripts = SCRIPTS_DIR,
         prefix  = CONTRIB_CHUNK_PREFIX,
-        n_procs = config["contribs"]["procs_per_gpu"]
+        script  = "bpnetlite_contribs.py" if BPNETLITE else "parallel_contribs.py",
+        # Options of each backend (bpnetlite seeds its references with the shuffle seed)
+        options = lambda w, threads: (
+            f"--batch-size {CONTRIBS['batch_size']} --dtype {CONTRIBS['dtype']} --seed {CONTRIBS['shuffle_seed']}"
+            if BPNETLITE else f"--n-procs {CONTRIBS['procs_per_gpu']} --threads {threads}"),
+        thread_env = lambda w, threads: thread_env(threads)
     resources:
         mem_mb    = RESOURCES["contribs_chunk"]["mem_mb"],
         cpu       = RESOURCES["contribs_chunk"]["cpu"],
         runtime   = RESOURCES["contribs_chunk"]["runtime"],
-        gres      = RESOURCES["contribs_chunk"]["gres"],
+        gres      = RESOURCES["contribs_chunk"]["gres_bpnetlite" if BPNETLITE else "gres"],
         slurm_partition = gpu_partition("contribs_chunk")
     threads:
         RESOURCES["contribs_chunk"]["cpu"]
     retries:
         RESOURCES["contribs_chunk"]["retries"]
     container:
-        config["chrombpnet_container"]
+        None if BPNETLITE else config["chrombpnet_container"]
+    conda:
+        "../envs/bpnetlite.yaml" if BPNETLITE else None
     log:
         "logs/contribs_bw/{sample}_fold_{fold}_chunk_{chunk}.log"
     shell:
         """
-        python {params.scripts}/parallel_contribs.py \
+        export {params.thread_env}
+        python {params.scripts}/{params.script} \
             --model {input.model} \
             --regions {input.regions} \
             --genome {input.genome} \
             --out-prefix {params.prefix} \
             --heads counts profile \
-            --n-procs {params.n_procs} \
-            --threads {threads} \
+            {params.options} \
             > {log} 2>&1
         """
 

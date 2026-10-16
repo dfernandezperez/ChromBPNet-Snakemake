@@ -62,17 +62,26 @@ chromnpnet_model:
   assay_type: "ATAC" # Or "DNASE"
   extra_params: "" # Extra parameters for bias model
 
-# Contribution scores (chrombpnet DeepSHAP) for all peaks of each sample and fold.
-# The peaks are shuffled (fixed seed, same order for every fold) and split into `n_chunks` GPU jobs
-# that can run in parallel on different GPUs (~165 regions/min per RTX 3090, so 20 chunks of 200k
-# peaks take ~1 h each); the chunks are merged afterwards. Each job runs `procs_per_gpu` DeepSHAP
-# processes on its GPU: 2 is ~1.2x faster than 1, more saturate the GPU (and 5 run out of its memory).
+# Contribution scores (DeepLIFT/SHAP, 20 dinucleotide-shuffled references) for all peaks of each
+# sample and fold. The peaks are shuffled (fixed seed, same order for every fold) and split into
+# `n_chunks` GPU jobs that can run in parallel on different GPUs; the chunks are merged afterwards.
 # Changing n_chunks or shuffle_seed recomputes all the contribution scores.
+#   backend: chrombpnet  chrombpnet's own DeepSHAP (TensorFlow 2.8; RTX 3090 only). Each job runs
+#                        `procs_per_gpu` processes on its GPU (2 is ~1.2x faster than 1; more saturate
+#                        the GPU). Scores are not reproducible (unseeded references).
+#            bpnetlite   the same method with bpnet-lite/tangermeme in PyTorch (scripts/bpnetlite_contribs.py).
+#                        Scores agree with chrombpnet's as much as two chrombpnet runs do, are reproducible
+#                        (references seeded with shuffle_seed) and it runs on any GPU type: on an RTX 3090
+#                        ~190 regions/min in float32, ~300 in float16 (chrombpnet: ~165). Peaks containing
+#                        N (~0.1%) are skipped, as bpnet-lite's `bpnet attribute` does.
 contribs:
+  backend: bpnetlite
   n_chunks: 20
-  procs_per_gpu: 2
   shuffle_seed: 1234
   keep_chunks: false # Keep the per-chunk h5 files (otherwise they are deleted once merged)
+  procs_per_gpu: 2 # chrombpnet backend
+  batch_size: 64 # bpnetlite backend: region-reference pairs per GPU batch (RTX 3090: ~20 GB of GPU memory in float32, ~11 GB in float16)
+  dtype: float16 # bpnetlite backend: float16 (scores identical to float32, r = 1.0000) or float32 (~1.6x slower)
 
 # TF-MoDISco run on each fold's contribution scores for the QC report of the chrombpnet models
 # (same settings as `chrombpnet pipeline`, on a random subset of the fold's peaks)

@@ -81,9 +81,10 @@ workdir: OUTPUT_DIR
 # the (often old) timestamps of the packages, so parts of the conda envs and package cache are deleted
 # soon after creation, breaking them. Refresh their timestamps once per run, after snakemake has created
 # the envs and before any job starts (onstart only runs in the main process, and not in dry runs).
+# Only files older than 30 days are touched: touching every file of the envs (e.g. PyTorch) takes >10 min.
 # Envs left unused for > 60 days can still break: then delete .snakemake/conda and .conda_pkgs.
 onstart:
-    shell("find .snakemake/conda .conda_pkgs -exec touch -h -c {{}} + 2>/dev/null || true")
+    shell("find .snakemake/conda .conda_pkgs -mtime +30 -exec touch -h -c {{}} + 2>/dev/null || true")
 
 # --- Load snakemake rules ---
 include: "rules/common.smk"

@@ -1,0 +1,18 @@
+name: BPNETLITE_ENV
+
+channels:
+  - conda-forge
+
+dependencies:
+  - python=3.11
+  - pip
+  - pip:
+      # PyPI torch wheels bundle the CUDA runtime (12.4: RTX 3090/4090 and H200), so the env can be
+      # built on a node without GPU
+      - torch==2.6.0
+      - bpnet-lite==1.0.0 # Loads the chrombpnet TF models in PyTorch
+      - tangermeme==1.5.0 # DeepLIFT/SHAP (bpnet-lite calls it)
+      - h5py
+      - hdf5plugin
+      - pyfaidx
+      - pandas

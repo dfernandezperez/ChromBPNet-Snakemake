@@ -5,8 +5,9 @@
 # cpu specifies the number of cores (adjust based on tool capabilities and cluster policy).
 # retries specifies how many times a job should be resubmitted on failure (useful for transient issues).
 #
-# GPU rules: `gres` requests an RTX 3090 (TensorFlow 2.8 in the chrombpnet image is not safe on the
-# 4090/H200 nodes) and `slurm_partition` is either a partition name or
+# GPU rules: `gres` requests an RTX 3090 for TensorFlow (2.8 in the chrombpnet image is not safe on
+# the 4090/H200 nodes) and any GPU for PyTorch (bpnet-lite contribs, Fi-NeMo), which adds the H200 and
+# 4090 nodes of spot_gpu. `slurm_partition` is either a partition name or
 #   main: always gpu_routing.main_partition (model training: long jobs that should not be preempted)
 #   auto: main_partition while you have < gpu_lane_limit jobs there, otherwise overflow_partition
 #         (preemptible: jobs are requeued and restart; retries after a failure go to main_partition)
@@ -145,13 +146,14 @@ pred_bw:
   slurm_partition: auto
   retries: 1
 
-# One chunk of the contribution scores (see `contribs` in config.yaml). `cpu` is shared by the
-# contribs.procs_per_gpu DeepSHAP processes (each also needs ~5 GB of GPU memory)
+# One chunk of the contribution scores (see `contribs` in config.yaml). With the chrombpnet backend
+# `cpu` is shared by the contribs.procs_per_gpu DeepSHAP processes (each needs ~5 GB of GPU memory)
 contribs_chunk:
   runtime: 360
   mem_mb: 32000
   cpu: 4
-  gres: gpu:rtx3090:1
+  gres: gpu:rtx3090:1 # chrombpnet backend (TensorFlow)
+  gres_bpnetlite: gpu:1 # bpnetlite backend (PyTorch): any GPU type
   slurm_partition: auto
   retries: 1
 
@@ -202,7 +204,7 @@ finemo_call_hits:
   runtime: 240
   mem_mb: 32000
   cpu: 4
-  gres: gpu:rtx3090:1
+  gres: gpu:1 # PyTorch: any GPU type
   slurm_partition: auto
   retries: 1
 
