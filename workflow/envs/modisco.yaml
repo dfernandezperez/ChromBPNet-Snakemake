@@ -1,0 +1,15 @@
+name: MODISCO_ENV
+
+channels:
+  - conda-forge
+  - bioconda
+
+dependencies:
+  - python=3.11
+  - meme=5.5.9 # tomtom, which `modisco report` runs to match the patterns to the MEME motif db
+  - pip
+  - pip:
+      # 2.0.7 in the chrombpnet image crashes in _extract_gkmers when a seqlet has fewer gapped k-mers
+      # than max_entries ("cannot assign slice from input of different size"), fixed in 2.3.2
+      - modisco-lite==2.4.0
+      - hdf5plugin # Blosc filter of the contribution h5 files

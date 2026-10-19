@@ -109,3 +109,11 @@ def thread_env(n):
     n = max(1, int(n))
     return (f"OMP_NUM_THREADS={n} OPENBLAS_NUM_THREADS={n} MKL_NUM_THREADS={n} NUMBA_NUM_THREADS={n} "
             f"TF_NUM_INTRAOP_THREADS={n} TF_NUM_INTEROP_THREADS=1")
+
+
+# --- TF-MoDISco ---
+# modisco-lite 2.4.0 in its own conda env: 2.0.7 in the chrombpnet image crashes on some seqlets
+# (_extract_gkmers, fixed in 2.3.2). 2.4.0 exposes settings that 2.0.7 hardcoded, with other defaults
+# (trim size 30, initial flank 10): these arguments restore 2.0.7's, as `chrombpnet pipeline` uses.
+MODISCO_ENV = "../envs/modisco.yaml"
+MODISCO_MOTIFS_ARGS = "-z 20 -t 20 -f 5 -g 5 -j 0"

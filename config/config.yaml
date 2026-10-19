@@ -93,8 +93,9 @@ qc_modisco:
   seqlets: 50000
   window: 500
 
-# Modisco Parameters (adjust as needed). This meme database 
-# is located in the singularity image of chromBPnet.
+# Modisco Parameters (adjust as needed). TF-MoDISco runs with modisco-lite 2.4.0 (workflow/envs/modisco.yaml)
+# with the settings of chrombpnet's 2.0.7 (see common.smk). meme_db: motifs the patterns are matched to,
+# by default chrombpnet's (a path inside its singularity image, copied to data/ by get_modisco_meme_db).
 modisco_tf:
   meme_db: "/scratch/chrombpnet/chrombpnet/data/motifs.meme.txt"
   seqlets: 200000 # Number of max seqlets

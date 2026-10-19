@@ -267,47 +267,47 @@ rule bias_qc_gpu:
 # TF-MoDISco on the bias model contributions: it should only find Tn5 (or DNase) bias motifs
 rule bias_qc_modisco:
     input:
-        scores = f"{BIAS_DIR}/auxiliary/interpret_subsample/bias.{{head}}_scores.h5"
+        scores  = f"{BIAS_DIR}/auxiliary/interpret_subsample/bias.{{head}}_scores.h5",
+        meme_db = rules.get_modisco_meme_db.output.meme_db
     output:
         modisco = f"{BIAS_DIR}/auxiliary/interpret_subsample/modisco_results_{{head}}_scores.h5",
-        html    = f"{BIAS_DIR}/evaluation/modisco_{{head}}/motifs.html",
-        pdf     = f"{BIAS_DIR}/evaluation/bias_{{head}}.pdf"
+        html    = f"{BIAS_DIR}/evaluation/modisco_{{head}}/motifs.html"
     params:
-        report_dir = f"{BIAS_DIR}/evaluation/modisco_{{head}}",
-        n_seqlets  = config["qc_modisco"]["seqlets"],
-        window     = config["qc_modisco"]["window"],
-        meme_db    = config["modisco_tf"]["meme_db"],
-        thread_env = lambda w, threads: thread_env(threads)
+        report_dir   = f"{BIAS_DIR}/evaluation/modisco_{{head}}",
+        n_seqlets    = config["qc_modisco"]["seqlets"],
+        window       = config["qc_modisco"]["window"],
+        motifs_args  = MODISCO_MOTIFS_ARGS,
+        thread_env   = lambda w, threads: thread_env(threads)
     resources:
         mem_mb  = RESOURCES["bias_qc_modisco"]["mem_mb"],
         runtime = RESOURCES["bias_qc_modisco"]["runtime"]
     threads:
         RESOURCES["bias_qc_modisco"]["cpu"]
-    retries: 
+    retries:
         RESOURCES["bias_qc_modisco"]["retries"]
-    container:
-        config["chrombpnet_container"]
+    conda:
+        MODISCO_ENV
     log:
         "logs/bias_qc/bias_fold_{fold}_modisco_{head}.log"
     shell:
         """
         export {params.thread_env}
         rm -rf {params.report_dir}
-        modisco motifs -i {input.scores} -n {params.n_seqlets} -w {params.window} -o {output.modisco} > {log} 2>&1
+        modisco motifs -i {input.scores} -n {params.n_seqlets} -w {params.window} {params.motifs_args} -o {output.modisco} > {log} 2>&1
         # Default image path prefix ("./"): the overall report expects it
-        modisco report -i {output.modisco} -o {params.report_dir}/ -m {params.meme_db} >> {log} 2>&1
-        python -c "import chrombpnet.evaluation.modisco.convert_html_to_pdf as c; c.main('{output.html}', '{output.pdf}')" >> {log} 2>&1
+        modisco report -i {output.modisco} -o {params.report_dir}/ -m {input.meme_db} >> {log} 2>&1
         """
 
 rule bias_report:
     input:
         flag     = rules.train_bias_model.output.flag,
         metrics  = rules.bias_qc_gpu.output.metrics,
-        modisco  = expand(f"{BIAS_DIR}/evaluation/modisco_{{head}}/motifs.html", head = ["profile", "counts"], allow_missing = True),
-        pdfs     = expand(f"{BIAS_DIR}/evaluation/bias_{{head}}.pdf", head = ["profile", "counts"], allow_missing = True)
+        modisco  = expand(f"{BIAS_DIR}/evaluation/modisco_{{head}}/motifs.html", head = ["profile", "counts"], allow_missing = True)
     output:
         html = f"{BIAS_DIR}/evaluation/overall_report.html", # Check it to tune bias_thresh_factor
-        pdf  = f"{BIAS_DIR}/evaluation/overall_report.pdf"
+        pdf  = f"{BIAS_DIR}/evaluation/overall_report.pdf",
+        # PDFs of the TF-MoDISco reports, as `chrombpnet bias pipeline` writes them
+        modisco_pdfs = expand(f"{BIAS_DIR}/evaluation/bias_{{head}}.pdf", head = ["profile", "counts"], allow_missing = True)
     params:
         dir = BIAS_DIR
     resources:
@@ -320,4 +320,10 @@ rule bias_report:
     log:
         "logs/bias_qc/bias_fold_{fold}_report.log"
     shell:
-        "python -m chrombpnet.helpers.generate_reports.make_html_bias -id {params.dir} -icmd pipeline > {log} 2>&1"
+        """
+        echo "Converting the TF-MoDISco reports to PDF" > {log}
+        for head in profile counts; do
+            python -c "import chrombpnet.evaluation.modisco.convert_html_to_pdf as c; c.main('{params.dir}/evaluation/modisco_$head/motifs.html', '{params.dir}/evaluation/bias_$head.pdf')" >> {log} 2>&1
+        done
+        python -m chrombpnet.helpers.generate_reports.make_html_bias -id {params.dir} -icmd pipeline >> {log} 2>&1
+        """

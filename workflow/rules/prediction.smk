@@ -158,15 +158,17 @@ rule merge_contribs:
 # Run on the contribution scores averaged across folds (see fold_average.smk)
 rule modisco_tf:
      input:
-         profile_scores = "contribs_bw/{sample}/{sample}_mean.profile_scores.h5"
+         profile_scores = "contribs_bw/{sample}/{sample}_mean.profile_scores.h5",
+         meme_db        = rules.get_modisco_meme_db.output.meme_db
      output:
          h5 = "modisco_tf/{sample}/{sample}_modisco.h5",
          report = directory("modisco_tf/{sample}/{sample}_reports")
      params:
-         n_seqlets = config["modisco_tf"]["seqlets"],
-         window    = config["modisco_tf"]["window"],
-         meme_db   = config["modisco_tf"]["meme_db"],
-         tomtom_n_match  = config["modisco_tf"]["tomtom_n_match"]
+         n_seqlets   = config["modisco_tf"]["seqlets"],
+         window      = config["modisco_tf"]["window"],
+         motifs_args = MODISCO_MOTIFS_ARGS,
+         tomtom_n_match  = config["modisco_tf"]["tomtom_n_match"],
+         thread_env  = lambda w, threads: thread_env(threads)
      resources:
         mem_mb    = RESOURCES["modisco_tf"]["mem_mb"],
         cpu       = RESOURCES["modisco_tf"]["cpu"],
@@ -175,25 +177,27 @@ rule modisco_tf:
         RESOURCES["modisco_tf"]["cpu"]
      retries:
         RESOURCES["modisco_tf"]["retries"]
-     container:
-         config["chrombpnet_container"]
+     conda:
+         MODISCO_ENV
      log:
          "logs/modisco_tf/{sample}.log"
      shell:
         """
+        export {params.thread_env}
         # Run modisco motif discovery
         echo "Running modisco motifs" > {log}
         modisco motifs \
         -i {input.profile_scores} \
         -n {params.n_seqlets} \
         -w {params.window} \
+        {params.motifs_args} \
         -o {output.h5} >> {log} 2>&1
 
         # Generate modisco report
         echo "Running modisco report" >> {log}
         modisco report \
         -i {output.h5} \
-        -m {params.meme_db} \
+        -m {input.meme_db} \
         -n {params.tomtom_n_match} \
         -o {output.report} \
         -s {output.report} >> {log} 2>&1

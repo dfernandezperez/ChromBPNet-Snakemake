@@ -68,21 +68,21 @@ rule chrombpnet_qc_gpu:
 rule chrombpnet_qc_modisco:
     input:
         scores  = "contribs_bw/{sample}/{sample}_fold_{fold}.profile_scores.h5",
-        regions = "contribs_bw/{sample}/{sample}_fold_{fold}.interpreted_regions.bed"
+        regions = "contribs_bw/{sample}/{sample}_fold_{fold}.interpreted_regions.bed",
+        meme_db = rules.get_modisco_meme_db.output.meme_db
     output:
         scores  = temp(f"{MODEL_DIR}/auxiliary/interpret_subsample/{{sample}}_chrombpnet_nobias.profile_scores.h5"),
         regions = f"{MODEL_DIR}/auxiliary/{{sample}}_30K_subsample_peaks.bed",
         modisco = f"{MODEL_DIR}/auxiliary/interpret_subsample/{{sample}}_modisco_results_profile_scores.h5",
-        html    = f"{MODEL_DIR}/evaluation/modisco_profile/motifs.html",
-        pdf     = f"{MODEL_DIR}/evaluation/{{sample}}_chrombpnet_nobias_profile.pdf"
+        html    = f"{MODEL_DIR}/evaluation/modisco_profile/motifs.html"
     params:
-        scripts    = SCRIPTS_DIR,
-        report_dir = f"{MODEL_DIR}/evaluation/modisco_profile",
-        n_regions  = config["qc_modisco"]["n_regions"],
-        n_seqlets  = config["qc_modisco"]["seqlets"],
-        window     = config["qc_modisco"]["window"],
-        meme_db    = config["modisco_tf"]["meme_db"],
-        thread_env = lambda w, threads: thread_env(threads)
+        scripts     = SCRIPTS_DIR,
+        report_dir  = f"{MODEL_DIR}/evaluation/modisco_profile",
+        n_regions   = config["qc_modisco"]["n_regions"],
+        n_seqlets   = config["qc_modisco"]["seqlets"],
+        window      = config["qc_modisco"]["window"],
+        motifs_args = MODISCO_MOTIFS_ARGS,
+        thread_env  = lambda w, threads: thread_env(threads)
     resources:
         mem_mb  = RESOURCES["chrombpnet_qc_modisco"]["mem_mb"],
         runtime = RESOURCES["chrombpnet_qc_modisco"]["runtime"]
@@ -90,8 +90,8 @@ rule chrombpnet_qc_modisco:
         RESOURCES["chrombpnet_qc_modisco"]["cpu"]
     retries:
         RESOURCES["chrombpnet_qc_modisco"]["retries"]
-    container:
-        config["chrombpnet_container"]
+    conda:
+        MODISCO_ENV
     log:
         "logs/chrombpnet_qc/{sample}_fold_{fold}_modisco.log"
     shell:
@@ -100,10 +100,9 @@ rule chrombpnet_qc_modisco:
         python {params.scripts}/average_contribs_h5.py --h5 {input.scores} --beds {input.regions} \
             --out-h5 {output.scores} --out-bed {output.regions} --max-rows {params.n_regions} > {log} 2>&1
         rm -rf {params.report_dir}
-        modisco motifs -i {output.scores} -n {params.n_seqlets} -w {params.window} -o {output.modisco} >> {log} 2>&1
+        modisco motifs -i {output.scores} -n {params.n_seqlets} -w {params.window} {params.motifs_args} -o {output.modisco} >> {log} 2>&1
         # Default image path prefix ("./"): the overall report expects it
-        modisco report -i {output.modisco} -o {params.report_dir}/ -m {params.meme_db} >> {log} 2>&1
-        python -c "import chrombpnet.evaluation.modisco.convert_html_to_pdf as c; c.main('{output.html}', '{output.pdf}')" >> {log} 2>&1
+        modisco report -i {output.modisco} -o {params.report_dir}/ -m {input.meme_db} >> {log} 2>&1
         """
 
 rule chrombpnet_report:
@@ -111,11 +110,12 @@ rule chrombpnet_report:
         flag          = rules.train_chrombpnet.output.flag,
         metrics       = rules.chrombpnet_qc_gpu.output.metrics,
         bias_response = rules.chrombpnet_qc_gpu.output.bias_response,
-        modisco       = rules.chrombpnet_qc_modisco.output.html,
-        pdf           = rules.chrombpnet_qc_modisco.output.pdf
+        modisco       = rules.chrombpnet_qc_modisco.output.html
     output:
         html = f"{MODEL_DIR}/evaluation/{{sample}}_overall_report.html",
-        pdf  = f"{MODEL_DIR}/evaluation/{{sample}}_overall_report.pdf"
+        pdf  = f"{MODEL_DIR}/evaluation/{{sample}}_overall_report.pdf",
+        # PDF of the TF-MoDISco report, as `chrombpnet pipeline` writes it
+        modisco_pdf = f"{MODEL_DIR}/evaluation/{{sample}}_chrombpnet_nobias_profile.pdf"
     params:
         dir   = MODEL_DIR,
         assay = config["chromnpnet_model"]["assay_type"]
@@ -129,5 +129,8 @@ rule chrombpnet_report:
     log:
         "logs/chrombpnet_qc/{sample}_fold_{fold}_report.log"
     shell:
-        "python -m chrombpnet.helpers.generate_reports.make_html -id {params.dir} -d {params.assay} "
-        "-fp {wildcards.sample} -icmd pipeline > {log} 2>&1"
+        """
+        python -c "import chrombpnet.evaluation.modisco.convert_html_to_pdf as c; c.main('{input.modisco}', '{output.modisco_pdf}')" > {log} 2>&1
+        python -m chrombpnet.helpers.generate_reports.make_html -id {params.dir} -d {params.assay} \
+            -fp {wildcards.sample} -icmd pipeline >> {log} 2>&1
+        """

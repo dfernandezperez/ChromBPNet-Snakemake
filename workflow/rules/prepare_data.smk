@@ -80,6 +80,25 @@ rule get_motif_db:
         wget -O {output.motif_db} {params.url} 2> {log}
         """
 
+# MEME motif database that `modisco report` matches the TF-MoDISco motifs to (by default chrombpnet's,
+# inside its image). Copied out because TF-MoDISco runs in its own conda env (see common.smk)
+rule get_modisco_meme_db:
+    output:
+        meme_db = "data/modisco_motifs.meme.txt"
+    params:
+        meme_db = config["modisco_tf"]["meme_db"]
+    resources:
+        mem_mb  = RESOURCES["get_modisco_meme_db"]["mem_mb"],
+        runtime = RESOURCES["get_modisco_meme_db"]["runtime"]
+    retries:
+        RESOURCES["get_modisco_meme_db"]["retries"]
+    container:
+        config["chrombpnet_container"]
+    log:
+        "logs/data_prep/get_modisco_meme_db.log"
+    shell:
+        "cp {params.meme_db} {output.meme_db} 2> {log}"
+
 # Function to get BAM paths for a sample (handles single or multiple paths)
 def get_bams_for_sample(wildcards):
     paths_str = SAMPLE_INFO_DF.loc[wildcards.sample, "BamPath"]

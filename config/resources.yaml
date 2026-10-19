@@ -35,6 +35,11 @@ get_motif_db:
   mem_mb: 1000
   retries: 3
 
+get_modisco_meme_db:
+  runtime: 10
+  mem_mb: 1000
+  retries: 1
+
 make_chr_splits:
   runtime: 10
   mem_mb: 2000
