@@ -64,8 +64,12 @@ os.environ["TMPDIR"] = HOST_TMP_DIR
 # This tells Snakemake which HOST environment variables to pass into the container.
 # Singularity automatically strips the "SINGULARITY_" prefix.
 envvars: "SINGULARITY_TMPDIR","TMPDIR"
-# Cache of image layers used when pulling the containers (defaults to ~/.singularity/cache)
-os.environ["SINGULARITY_CACHEDIR"] = os.environ["APPTAINER_CACHEDIR"] = f"{OUTPUT_DIR}/.singularity_cache"
+# Cache of image layers used when pulling the containers (defaults to ~/.singularity/cache). Not
+# APPTAINER_CACHEDIR: snakemake uses it as the directory of the pulled images (--apptainer-prefix), which
+# the cluster jobs inherit but the main process reads before this line, so the jobs would keep their own
+# copies of the images (in a fresh output dir, every container job pulls its own). Singularity (CE) only
+# reads SINGULARITY_CACHEDIR.
+os.environ["SINGULARITY_CACHEDIR"] = f"{OUTPUT_DIR}/.singularity_cache"
 # Package cache used when creating the conda environments (defaults to the conda installation in home)
 os.environ["CONDA_PKGS_DIRS"] = f"{OUTPUT_DIR}/.conda_pkgs"
 # Strict channel priority, as recommended by snakemake: much faster and more robust env solving
